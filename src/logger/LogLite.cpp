@@ -1,5 +1,4 @@
-#include "Logger.h"
-
+#include <logger/LogLite.h>
 #include <time.h>
 #include <fstream>
 #include <ostream>
@@ -10,6 +9,8 @@
 #include <iomanip>
 #include <thread>
 #include <iterator>
+
+LOG_LITE_NS_BEIGN
 
 class FileHelper
 {
@@ -57,77 +58,19 @@ bool FileHelper::removeFile(std::string& path)
     return true;
 }
 
-std::string LoggerHelper::levelToString(LOG_LEVEL level)
-{
-    std::string log_level("");
-    switch(level)
-    {
-        case LOG_LEVEL::LOG_LEVEL_OFF:
-            log_level = "OFF";
-            break;
-        case LOG_LEVEL::LOG_LEVEL_FAILED:
-            log_level = "FAILED";
-            break;
-        case LOG_LEVEL_ERROR:
-            log_level = "ERROR";
-            break;
-        case LOG_LEVEL_WARN:
-            log_level = "WARN";
-            break;
-        case LOG_LEVEL_INFO:
-            log_level = "INFO";
-            break;
-        case LOG_LEVEL_DEBUG:
-            log_level = "DEBUG";
-            break;
-        case LOG_LEVEL_TRACE:
-            log_level = "TRACE";
-            break;
-        default:
-            log_level = "UNKNOWN";
-            break;
-    }
-
-    return log_level;
-}
-
-std::string LoggerHelper::modeToString(int mode)
-{
-    std::string log_mode;
-    if (mode & LOG_MODE_FILE)
-        log_mode += "FILE; ";
-    if (mode & LOG_MODE_CONSOLE)
-        log_mode += "CONSOLE; ";
-
-    return log_mode;
-}
-
-std::string LoggerHelper::configToString(LogConfig conf)
-{
-    std::ostringstream oss;
-    oss << "log level:[" << levelToString(conf.level) << "], "
-        << "log mode:[" << modeToString(conf.mode) << "], "
-        << "log path:[" << conf.file_path << "], "
-        << "log size:[" << conf.file_size << "] bytes, "
-        << "log backup:[" << conf.file_backup<< "]"
-        << std::endl;
-
-    return oss.str();
-}
-
 // ---------------------------------------- //
-// LoggerImpl
+// LogLiteImpl
 // ---------------------------------------- //
 
-class LoggerImpl
+class LogLiteImpl
 {
 public:
-    explicit LoggerImpl(const LogConfig& conf)
+    explicit LogLiteImpl(const LogConfig& conf)
         : mLogConfig(conf)
         , mOfs(NULL)
     {}
 
-    virtual ~LoggerImpl()
+    virtual ~LogLiteImpl()
     {
         if (mOfs)
             mOfs->close();
@@ -138,8 +81,8 @@ public:
     void setConfig(const LogConfig& conf);
     LogConfig getConfig(void);
 
-    void writeLog(std::string& log, LOG_LEVEL level);
-    void writeLog(std::string& tag, std::string& log, LOG_LEVEL level);
+    void writeLog(LOG_LEVEL level, const std::string& log);
+    void writeLog(LOG_LEVEL level, const std::string& log, const std::string& tag);
 
 protected:
     virtual inline std::string generatePrefix(void);
@@ -158,7 +101,7 @@ private:
     std::shared_ptr<std::ofstream> mOfs;
 };
 
-bool LoggerImpl::init(void)
+bool LogLiteImpl::init(void)
 {
     mOfs.reset(new std::ofstream(mLogConfig.file_path, std::ios::out | std::ios::app));
     if (!mOfs->is_open())
@@ -171,19 +114,19 @@ bool LoggerImpl::init(void)
     return true;
 }
 
-void LoggerImpl::setConfig(const LogConfig& conf)
+void LogLiteImpl::setConfig(const LogConfig& conf)
 {
     mLogConfig = conf;
 }
 
-LogConfig LoggerImpl::getConfig(void)
+LogConfig LogLiteImpl::getConfig(void)
 {
     return mLogConfig;
 }
 
-void LoggerImpl::writeLog(std::string& log, LOG_LEVEL level)
+void LogLiteImpl::writeLog(LOG_LEVEL level, const std::string& log)
 {
-    if (level > mLogConfig.level)
+    if (level < mLogConfig.level)
         return;
 
     if (mOfs == NULL)
@@ -210,12 +153,12 @@ void LoggerImpl::writeLog(std::string& log, LOG_LEVEL level)
     return;
 }
 
-void LoggerImpl::writeLog(std::string& tag, std::string& log, LOG_LEVEL level)
+void LogLiteImpl::writeLog(LOG_LEVEL level, const std::string& log, const std::string& tag)
 {
     return;
 }
 
-std::string LoggerImpl::generatePrefix(void)
+std::string LogLiteImpl::generatePrefix(void)
 {
     std::ostringstream oss;
     oss << generateTimestamp() << " "
@@ -227,7 +170,7 @@ std::string LoggerImpl::generatePrefix(void)
     return oss.str();
 }
 
-std::string LoggerImpl::generateTimestamp(void)
+std::string LogLiteImpl::generateTimestamp(void)
 {
     auto time_now    = std::chrono::system_clock::now();
 
@@ -261,7 +204,7 @@ std::string LoggerImpl::generateTimestamp(void)
     return oss.str();
 }
 
-std::string LoggerImpl::generateThreadID(void)
+std::string LogLiteImpl::generateThreadID(void)
 {
     std::ostringstream oss;
     oss << std::this_thread::get_id();
@@ -276,61 +219,63 @@ std::string LoggerImpl::generateThreadID(void)
     return oss.str();
 }
 
-std::string LoggerImpl::generateModuleTag(void)
+std::string LogLiteImpl::generateModuleTag(void)
+{
+    return mLogConfig.mod_tag;
+}
+
+std::string LogLiteImpl::generateLogLevel(void)
+{
+    return LogHelper::levelToString(mLogConfig.level);
+}
+
+std::string LogLiteImpl::generateLogTag(void)
+{
+    return mLogConfig.log_tag;;
+}
+
+std::string LogLiteImpl::generateClassTag(void)
 {
     return "";
 }
 
-std::string LoggerImpl::generateLogLevel(void)
-{
-    return LoggerHelper::levelToString(mLogConfig.level);
-}
-
-std::string LoggerImpl::generateLogTag(void)
-{
-    return "";
-}
-
-std::string LoggerImpl::generateClassTag(void)
-{
-    return "";
-}
-
-std::string LoggerImpl::generateFunctionTag(void)
+std::string LogLiteImpl::generateFunctionTag(void)
 {
     return "";
 }
 
 // ---------------------------------------- //
-// Logger
+// LogLite
 // ---------------------------------------- //
 
-Logger::Logger(const LogConfig& conf)
+LogLite::LogLite(const LogConfig& conf)
 {
-    mImpl.reset(new LoggerImpl(conf));
+    mImpl.reset(new LogLiteImpl(conf));
 }
 
-bool Logger::init(void)
+bool LogLite::init(void)
 {
     return mImpl->init();
 }
 
-void Logger::setConfig(const LogConfig& conf)
+void LogLite::setConfig(const LogConfig& conf)
 {
     return mImpl->setConfig(conf);
 }
 
-LogConfig Logger::getConfig(void)
+LogConfig LogLite::getConfig(void)
 {
     return mImpl->getConfig();
 }
 
-void Logger::writeLog(std::string& log, LOG_LEVEL level)
+void LogLite::writeLog(LOG_LEVEL level, const std::string& log)
 {
-    return mImpl->writeLog(log, level);
+    return mImpl->writeLog(level, log);
 }
 
-void Logger::writeLog(std::string& tag, std::string& log, LOG_LEVEL level)
+void LogLite::writeLog(LOG_LEVEL level, const std::string& log, const std::string& tag)
 {
-    return mImpl->writeLog(tag, log, level);
+    return mImpl->writeLog(level, log, tag);
 }
+
+LOG_LITE_NS_END

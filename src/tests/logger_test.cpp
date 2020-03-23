@@ -3,14 +3,17 @@
 #include <sstream>
 #include <thread>
 #include <chrono>
-#include <logger/Logger.h>
+#include <logger/LogLite.h>
+#include <logger/LogHelper.h>
 
 int main(int argc, const char* argv[])
 {
+    using namespace LOG_LITE_NAMESPACE;
     LogConfig log_conf;
     log_conf.mode = LOG_MODE_FILE;
-    Logger logger(log_conf);
-    std::cout << LoggerHelper::configToString(log_conf) << std::endl;
+    log_conf.level = LOG_LEVEL_DEBUG;
+    LogLite logger(log_conf);
+    std::cout << LogHelper::configToString(log_conf) << std::endl;
     if (!logger.init())
     {
         std::cerr << "call Logger::init() failed" << std::endl;
@@ -23,8 +26,7 @@ int main(int argc, const char* argv[])
         std::ostringstream oss;
         oss << "now is:[" << i << "] tick";
         std::string log_info = oss.str();
-        logger.writeLog(log_info, LOG_LEVEL_DEBUG);
-        //std::this_thread::sleep_for(std::chrono::seconds(1));
+        logger.writeLog(LOG_LEVEL_INFO, log_info);
     }
     auto time_end = std::chrono::high_resolution_clock::now();
     auto cost_us = std::chrono::duration_cast<std::chrono::milliseconds>(time_end - time_begin);
