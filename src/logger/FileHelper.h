@@ -9,8 +9,11 @@ class FileHelper
 {
 public:
     static bool getFileSize(const std::string& path, size_t& fsize);
+
     static bool fileExist(const std::string& path);
+
     static bool moveFile(const std::string& oldPath, const std::string& newPath);
+
     static bool removeFile(const std::string& path);
 };
 
