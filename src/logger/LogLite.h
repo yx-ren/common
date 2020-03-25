@@ -20,10 +20,9 @@ public:
     bool init(void);
 
     void setConfig(const LogConfig& conf);
-    LogConfig getConfig(void);
+    LogConfig getConfig(void) const;
 
     void writeLog(LOG_LEVEL level, const std::string& log);
-    void writeLog(LOG_LEVEL level, const std::string& log, const std::string& tag);
 
 private:
     std::shared_ptr<LogLiteImpl> mImpl;

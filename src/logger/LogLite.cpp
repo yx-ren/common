@@ -4,59 +4,16 @@
 #include <ostream>
 #include <sstream>
 #include <iostream>
+#include <map>
 #include <mutex>
 #include <chrono>
 #include <iomanip>
 #include <thread>
 #include <iterator>
 
+#include <logger/FileHelper.h>
+
 LOG_LITE_NS_BEIGN
-
-class FileHelper
-{
-public:
-    FileHelper() = delete;
-    FileHelper(const FileHelper&) = delete;
-    FileHelper& operator=(const FileHelper&) = delete;
-
-    static bool getFileSize(std::string& path, size_t& fsize);
-    static bool getFileName(std::string& path);
-    static bool getFilePathPrefix(std::string& path);
-    static bool moveFile(std::string& oldPath, std::string& newPath);
-    static bool removeFile(std::string& path);
-};
-
-bool FileHelper::getFileSize(std::string& path, size_t& fsize)
-{
-    std::ifstream ifs(path, std::ios::in | std::ios::binary);
-    if (!ifs.is_open())
-        return false;
-
-    std::string file_buf((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
-    fsize = file_buf.size();
-
-    return true;
-}
-
-bool FileHelper::getFileName(std::string& path)
-{
-    return true;
-}
-
-bool FileHelper::getFilePathPrefix(std::string& path)
-{
-    return true;
-}
-
-bool FileHelper::moveFile(std::string& oldPath, std::string& newPath)
-{
-    return true;
-}
-
-bool FileHelper::removeFile(std::string& path)
-{
-    return true;
-}
 
 // ---------------------------------------- //
 // LogLiteImpl
@@ -68,6 +25,7 @@ public:
     explicit LogLiteImpl(const LogConfig& conf)
         : mLogConfig(conf)
         , mOfs(NULL)
+        , mLogLevel(LogHelper::levelToString(mLogConfig.level))
     {}
 
     virtual ~LogLiteImpl()
@@ -79,30 +37,35 @@ public:
     bool init(void);
 
     void setConfig(const LogConfig& conf);
-    LogConfig getConfig(void);
+    LogConfig getConfig(void) const;
 
     void writeLog(LOG_LEVEL level, const std::string& log);
-    void writeLog(LOG_LEVEL level, const std::string& log, const std::string& tag);
 
 protected:
     virtual inline std::string generatePrefix(void);
 
     virtual inline std::string generateTimestamp(void);
     virtual inline std::string generateThreadID(void);
-    virtual inline std::string generateModuleTag(void);
-    virtual inline std::string generateLogLevel(void);
-    virtual inline std::string generateLogTag(void);
-    virtual inline std::string generateClassTag(void);
-    virtual inline std::string generateFunctionTag(void);
+    virtual inline std::string& getModuleTag(void);
+    virtual inline std::string& getLogLevel(void);
+    virtual inline std::string& getLogTag(void);
+
+    void reset(void);
+
+    void rollback(void);
 
 private:
     std::mutex mMutex;
     LogConfig mLogConfig;
     std::shared_ptr<std::ofstream> mOfs;
+    std::string mLogLevel;
+    size_t mLogSize;
 };
 
 bool LogLiteImpl::init(void)
 {
+    FileHelper::getFileSize(mLogConfig.file_path, mLogSize);
+
     mOfs.reset(new std::ofstream(mLogConfig.file_path, std::ios::out | std::ios::app));
     if (!mOfs->is_open())
     {
@@ -117,9 +80,10 @@ bool LogLiteImpl::init(void)
 void LogLiteImpl::setConfig(const LogConfig& conf)
 {
     mLogConfig = conf;
+    mLogLevel = LogHelper::levelToString(mLogConfig.level);
 }
 
-LogConfig LogLiteImpl::getConfig(void)
+LogConfig LogLiteImpl::getConfig(void) const
 {
     return mLogConfig;
 }
@@ -128,6 +92,23 @@ void LogLiteImpl::writeLog(LOG_LEVEL level, const std::string& log)
 {
     if (level < mLogConfig.level)
         return;
+
+    if (mLogSize >= mLogConfig.file_size)
+    {
+        // close
+        reset();
+
+        rollback();
+
+        // reopen
+        mOfs = std::make_shared<std::ofstream>(mLogConfig.file_path, std::ios::out | std::ios::app);
+        if (!mOfs->is_open())
+        {
+            std::cerr << "call std::ofstream() failed, "
+                << "log file path:[" << mLogConfig.file_path << "]" << std::endl;
+            return;
+        }
+    }
 
     if (mOfs == NULL)
     {
@@ -140,21 +121,19 @@ void LogLiteImpl::writeLog(LOG_LEVEL level, const std::string& log)
     oss << log_prefix << log << std::endl;
 
     std::lock_guard<std::mutex> lk(mMutex);
+    std::string log_item = oss.str();
     if (mLogConfig.mode & LOG_MODE_FILE)
     {
-        *mOfs << oss.str();
+        *mOfs << log_item;
     }
 
     if (mLogConfig.mode & LOG_MODE_CONSOLE)
     {
-        std::cout << oss.str();
+        std::cout << log_item;
     }
 
-    return;
-}
+    mLogSize += log_item.size();
 
-void LogLiteImpl::writeLog(LOG_LEVEL level, const std::string& log, const std::string& tag)
-{
     return;
 }
 
@@ -163,9 +142,10 @@ std::string LogLiteImpl::generatePrefix(void)
     std::ostringstream oss;
     oss << generateTimestamp() << " "
         << "[" << generateThreadID() << "] "
-        << "<" << generateModuleTag()<< ">: "
-        << generateLogLevel()<< " "
-        << generateLogTag() << "." << generateFunctionTag() << " - ";
+        << "<" << getModuleTag() << ">: "
+        << getLogLevel() << " "
+        << getLogTag() << " "
+        << " - ";
 
     return oss.str();
 }
@@ -219,29 +199,73 @@ std::string LogLiteImpl::generateThreadID(void)
     return oss.str();
 }
 
-std::string LogLiteImpl::generateModuleTag(void)
+std::string& LogLiteImpl::getModuleTag(void)
 {
     return mLogConfig.mod_tag;
 }
 
-std::string LogLiteImpl::generateLogLevel(void)
+std::string& LogLiteImpl::getLogLevel(void)
 {
-    return LogHelper::levelToString(mLogConfig.level);
+    return mLogLevel;
 }
 
-std::string LogLiteImpl::generateLogTag(void)
+std::string& LogLiteImpl::getLogTag(void)
 {
     return mLogConfig.log_tag;;
 }
 
-std::string LogLiteImpl::generateClassTag(void)
+void LogLiteImpl::reset(void)
 {
-    return "";
+    if (mOfs)
+    {
+        mOfs->close();
+        mOfs.reset();
+    }
+
+    mLogSize = 0;
 }
 
-std::string LogLiteImpl::generateFunctionTag(void)
+void LogLiteImpl::rollback(void)
 {
-    return "";
+    std::map<std::string, std::string> rename_mapped =
+    {
+        {mLogConfig.file_path, mLogConfig.file_path + ".1"}
+    };
+
+    for (size_t index = 1; index != mLogConfig.file_backup; index++)
+    {
+        std::ostringstream oss;
+        oss << mLogConfig.file_path << "." << index;
+
+        std::string log_name = oss.str();
+        if (FileHelper::fileExist(log_name))
+        {
+            oss.str("");
+            oss << mLogConfig.file_path << "." << index + 1;
+            std::string log_rename = oss.str();
+
+            rename_mapped.insert(std::make_pair(log_name, log_rename));
+        }
+        else
+            break;
+    }
+
+#if 1
+    for (auto rit = rename_mapped.crbegin();
+        rit != rename_mapped.crend(); rit++)
+#else
+    for (std::map<std::string, std::string>::const_reverse_iterator rit = rename_mapped.rbegin();
+        rit != rename_mapped.rend(); rit++)
+#endif
+    {
+        if (!FileHelper::moveFile(rit->first, rit->second))
+        {
+            std::cerr << "roll back log file failed" << std::endl;
+            continue;
+        }
+    }
+
+    return;
 }
 
 // ---------------------------------------- //
@@ -263,7 +287,7 @@ void LogLite::setConfig(const LogConfig& conf)
     return mImpl->setConfig(conf);
 }
 
-LogConfig LogLite::getConfig(void)
+LogConfig LogLite::getConfig(void) const
 {
     return mImpl->getConfig();
 }
@@ -271,11 +295,6 @@ LogConfig LogLite::getConfig(void)
 void LogLite::writeLog(LOG_LEVEL level, const std::string& log)
 {
     return mImpl->writeLog(level, log);
-}
-
-void LogLite::writeLog(LOG_LEVEL level, const std::string& log, const std::string& tag)
-{
-    return mImpl->writeLog(level, log, tag);
 }
 
 LOG_LITE_NS_END

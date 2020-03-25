@@ -12,6 +12,7 @@ int main(int argc, const char* argv[])
     LogConfig log_conf;
     log_conf.mode = LOG_MODE_FILE;
     log_conf.level = LOG_LEVEL_DEBUG;
+    log_conf.file_size = 1024 * 1024;
     LogLite logger(log_conf);
     std::cout << LogHelper::configToString(log_conf) << std::endl;
     if (!logger.init())
