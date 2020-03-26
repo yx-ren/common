@@ -11,7 +11,7 @@ LOG_LITE_NS_BEIGN
 class LogHelper
 {
 public:
-    static std::string levelToString(LOG_LEVEL level);
+    static std::string& levelToString(LOG_LEVEL level);
 
     static std::string modeToString(int mode);
 

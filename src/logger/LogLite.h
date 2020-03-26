@@ -27,6 +27,7 @@ public:
 private:
     std::shared_ptr<LogLiteImpl> mImpl;
 };
+typedef std::shared_ptr<LogLite> LogLitePtr;
 
 LOG_LITE_NS_END
 

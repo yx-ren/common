@@ -4,16 +4,39 @@
 #include <ostream>
 #include <sstream>
 #include <iostream>
+#include <vector>
+#include <queue>
 #include <map>
 #include <mutex>
 #include <chrono>
 #include <iomanip>
 #include <thread>
 #include <iterator>
+#if defined(WIN32) || defined(_WIN32)
+#include <mutex>
+#else
+#include <condition_variable>
+#endif
 
 #include <logger/FileHelper.h>
+//#include <logger/BlockTaskQueue.h>
 
 LOG_LITE_NS_BEIGN
+
+#define FILE_BLOCK_SIZE 4096
+#define LOG_ITEM_BUFF_SIZE 100
+#define IO_THREAD_INTERVAL_SECOND 3
+#define PROCESS_RAW_LOG_ITEM_THREADS_NUMBER 4
+#define PROCESS_FORMAT_LOG_ITEM_THREADS_NUMBER 1
+
+struct LogMetaInfo
+{
+    LOG_LEVEL level;
+    std::string msg;
+    //std::thread::id tid;
+    std::string tid;
+};
+typedef std::shared_ptr<LogMetaInfo> LogMetaInfoPtr;
 
 // ---------------------------------------- //
 // LogLiteImpl
@@ -22,16 +45,17 @@ LOG_LITE_NS_BEIGN
 class LogLiteImpl
 {
 public:
+    typedef std::pair<LOG_LEVEL, std::string> LogItem;
+    typedef std::shared_ptr<LogItem> LogItemPtr;
+
     explicit LogLiteImpl(const LogConfig& conf)
         : mLogConfig(conf)
-        , mOfs(NULL)
         , mLogLevel(LogHelper::levelToString(mLogConfig.level))
-    {}
-
-    virtual ~LogLiteImpl()
     {
-        mOfs.reset();
+        reset();
     }
+
+    ~LogLiteImpl();
 
     bool init(void);
 
@@ -42,6 +66,7 @@ public:
 
 protected:
     virtual inline std::string generatePrefix(void);
+    virtual inline std::string generatePrefix(const std::string& tid, const std::string& level); // may be not use lock
 
     virtual inline std::string generateTimestamp(void);
     virtual inline std::string generateThreadID(void);
@@ -51,44 +76,86 @@ protected:
 
     void reset(void);
 
+    bool reopen();
+
     void rollback(void);
 
+    void addLogRawItem(LOG_LEVEL level, const std::string& log);
+    void addLogFormatItem(std::shared_ptr<std::string> format_log);
+
+    void processLogRawItem();
+    void processLogFormatItem();
+
 private:
-    std::mutex mMutex;
+    mutable std::mutex mMutex;
     LogConfig mLogConfig;
     std::shared_ptr<std::ofstream> mOfs;
     std::string mLogLevel;
     size_t mLogSize;
+
+    std::queue<LogMetaInfoPtr> mLogRawItemQueue;
+    std::queue<std::shared_ptr<std::string>> mLogFormatItemQueue;
+
+    std::mutex mRawItemQueueMutex;
+    std::mutex mFormatItemQueueMutex;
+
+    std::condition_variable mRawItemQueueCond;
+    std::condition_variable mFormatItemQueueCond;
+
+    std::vector<std::shared_ptr<std::thread>> mConsumRawThreads;
+    std::vector<std::shared_ptr<std::thread>> mConsumFormatThreads;
 };
+
+LogLiteImpl::~LogLiteImpl()
+{
+    for (auto& th : mConsumRawThreads)
+        th->join();
+
+    for (auto& th : mConsumFormatThreads)
+        th->join();
+}
 
 bool LogLiteImpl::init(void)
 {
-    FileHelper::getFileSize(mLogConfig.file_path, mLogSize);
+    std::unique_lock<std::mutex> lk(mMutex);
+    if (mOfs)
+        return true;
 
-    mOfs.reset(new std::ofstream(mLogConfig.file_path, std::ios::out | std::ios::app));
-    if (!mOfs->is_open())
+    for (int i = 0; i != PROCESS_RAW_LOG_ITEM_THREADS_NUMBER; i++)
     {
-        std::cerr << "call std::ofstream() failed, "
-            << "log file path:[" << mLogConfig.file_path << "]" << std::endl;
-        return false;
+        std::shared_ptr<std::thread> th = std::make_shared<std::thread>(std::bind(&LogLiteImpl::processLogRawItem, this));
+        mConsumRawThreads.push_back(th);
     }
 
-    return true;
+    for (int i = 0; i != PROCESS_FORMAT_LOG_ITEM_THREADS_NUMBER; i++)
+    {
+        std::shared_ptr<std::thread> th = std::make_shared<std::thread>(std::bind(&LogLiteImpl::processLogFormatItem, this));
+        mConsumRawThreads.push_back(th);
+    }
+
+    FileHelper::getFileSize(mLogConfig.file_path, mLogSize);
+
+    return reopen();
 }
 
 void LogLiteImpl::setConfig(const LogConfig& conf)
 {
+    std::unique_lock<std::mutex> lk(mMutex);
     mLogConfig = conf;
     mLogLevel = LogHelper::levelToString(mLogConfig.level);
 }
 
 LogConfig LogLiteImpl::getConfig(void) const
 {
+    std::unique_lock<std::mutex> lk(mMutex);
     return mLogConfig;
 }
 
 void LogLiteImpl::writeLog(LOG_LEVEL level, const std::string& log)
 {
+#if 0
+    std::unique_lock<std::mutex> lk(mMutex);
+
     if (level < mLogConfig.level)
         return;
 
@@ -99,17 +166,11 @@ void LogLiteImpl::writeLog(LOG_LEVEL level, const std::string& log)
 
         rollback();
 
-        // reopen
-        mOfs = std::make_shared<std::ofstream>(mLogConfig.file_path, std::ios::out | std::ios::app);
-        if (!mOfs->is_open())
-        {
-            std::cerr << "call std::ofstream() failed, "
-                << "log file path:[" << mLogConfig.file_path << "]" << std::endl;
+        if (!reopen())
             return;
-        }
     }
 
-    if (mOfs == NULL)
+    if (!mOfs)
     {
         std::cerr << "logger not be inited, call init() and try again" << std::endl;
         return;
@@ -119,7 +180,6 @@ void LogLiteImpl::writeLog(LOG_LEVEL level, const std::string& log)
     std::string log_prefix = generatePrefix();
     oss << log_prefix << log << "\n";
 
-    std::lock_guard<std::mutex> lk(mMutex);
     std::string log_item = oss.str();
     if (mLogConfig.mode & LOG_MODE_FILE)
     {
@@ -134,6 +194,9 @@ void LogLiteImpl::writeLog(LOG_LEVEL level, const std::string& log)
     mLogSize += log_item.size();
 
     return;
+#else
+    addLogRawItem(level, log);
+#endif
 }
 
 std::string LogLiteImpl::generatePrefix(void)
@@ -144,6 +207,19 @@ std::string LogLiteImpl::generatePrefix(void)
         << "<" << getModuleTag() << ">: "
         << getLogLevel() << " "
         << getLogTag() << " "
+        << " - ";
+
+    return oss.str();
+}
+
+std::string LogLiteImpl::generatePrefix(const std::string& tid, const std::string& level)
+{
+    std::ostringstream oss;
+    oss << generateTimestamp()
+        << " [" << tid << "] "
+        << " <" << getModuleTag() << ">: "
+        << " " << level << " "
+        << " " << getLogTag() << " "
         << " - ";
 
     return oss.str();
@@ -219,6 +295,19 @@ void LogLiteImpl::reset(void)
     mLogSize = 0;
 }
 
+bool LogLiteImpl::reopen()
+{
+    mOfs.reset(new std::ofstream(mLogConfig.file_path, std::ios::out | std::ios::app));
+    if (!mOfs->is_open())
+    {
+        std::cerr << "call std::ofstream() failed, "
+            << "log file path:[" << mLogConfig.file_path << "]" << std::endl;
+        return false;
+    }
+
+    return true;
+}
+
 void LogLiteImpl::rollback(void)
 {
     std::map<std::string, std::string> rename_mapped =
@@ -244,13 +333,8 @@ void LogLiteImpl::rollback(void)
             break;
     }
 
-#if 1
     for (auto rit = rename_mapped.crbegin();
         rit != rename_mapped.crend(); rit++)
-#else
-    for (std::map<std::string, std::string>::const_reverse_iterator rit = rename_mapped.rbegin();
-        rit != rename_mapped.rend(); rit++)
-#endif
     {
         if (!FileHelper::moveFile(rit->first, rit->second))
         {
@@ -260,6 +344,117 @@ void LogLiteImpl::rollback(void)
     }
 
     return;
+}
+
+void LogLiteImpl::addLogRawItem(LOG_LEVEL level, const std::string& log)
+{
+    {
+        std::unique_lock<std::mutex> lk(mMutex);
+        if (level < mLogConfig.level)
+            return;
+    }
+
+    //  consider cache this part
+    std::ostringstream oss;
+    oss << "0x" << std::setw(8) << std::setfill('0')
+        << std::hex << std::this_thread::get_id();;
+    //  consider cache this part
+
+    LogMetaInfoPtr meta_info(std::make_shared<LogMetaInfo>());
+    meta_info->level = level;
+    meta_info->msg = log;
+    meta_info->tid = oss.str();
+
+    {
+        std::unique_lock<std::mutex> lk(mRawItemQueueMutex);
+        mLogRawItemQueue.push(meta_info);
+    }
+
+    mRawItemQueueCond.notify_one();
+}
+
+void LogLiteImpl::addLogFormatItem(std::shared_ptr<std::string> format_log)
+{
+    std::unique_lock<std::mutex> lk(mFormatItemQueueMutex);
+    mLogFormatItemQueue.push(format_log);
+
+    if (mLogFormatItemQueue.size() > LOG_ITEM_BUFF_SIZE)
+        mFormatItemQueueCond.notify_one();
+}
+
+void LogLiteImpl::processLogRawItem()
+{
+    while (true)
+    {
+        std::unique_lock<std::mutex> lk(mRawItemQueueMutex);
+        while (mLogRawItemQueue.empty())
+            mRawItemQueueCond.wait(lk);
+
+        std::shared_ptr<LogMetaInfo> rawItem = mLogRawItemQueue.front();
+        mLogRawItemQueue.pop();
+        lk.unlock();
+
+        // process
+        std::ostringstream oss;
+        std::string log_prefix = "";
+        {
+            std::unique_lock<std::mutex> lk(mMutex);
+            log_prefix = generatePrefix(rawItem->tid, LogHelper::levelToString(rawItem->level));
+        }
+        oss << log_prefix << rawItem->msg;
+
+        std::shared_ptr<std::string> format_log(std::make_shared<std::string>(oss.str()));
+        addLogFormatItem(format_log);
+    }
+
+}
+
+void LogLiteImpl::processLogFormatItem()
+{
+    while (true)
+    {
+        std::unique_lock<std::mutex> lk(mFormatItemQueueMutex);
+        while (mLogFormatItemQueue.empty())
+            mFormatItemQueueCond.wait_for(lk, std::chrono::seconds(IO_THREAD_INTERVAL_SECOND));
+
+        std::queue<std::shared_ptr<std::string>> format_item_queue;
+        format_item_queue.swap(mLogFormatItemQueue);
+        lk.unlock();
+
+        // process
+#if 0
+        for (auto log : format_item_queue)
+            logs += *log;
+#else
+        std::ostringstream oss;
+        while (!format_item_queue.empty())
+        {
+            std::shared_ptr<std::string> log = format_item_queue.front();
+            //logs += *log;
+            oss << *log << std::endl;
+            format_item_queue.pop();
+        }
+        std::string logs = oss.str();
+#endif
+
+        {
+            std::unique_lock<std::mutex> lk(mMutex);
+            if (mLogSize + logs.size() >= mLogConfig.file_size)
+            {
+                // close
+                reset();
+
+                rollback();
+
+                if (!reopen())
+                    return;
+            }
+
+            *mOfs << logs;
+            mLogSize += logs.size();
+        }
+    }
+
 }
 
 // ---------------------------------------- //

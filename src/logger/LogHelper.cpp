@@ -12,15 +12,16 @@ std::map<LOG_LEVEL, std::string> LogHelper::mLevelString =
     {LOG_LEVEL_ERROR,   "ERROR"},
     {LOG_LEVEL_FAILED,  "FAILED"},
     {LOG_LEVEL_OFF,     "OFF"},
+    {LOG_LEVEL_UNKNOWN, "UNKNOWN"},
 };
 
-std::string LogHelper::levelToString(LOG_LEVEL level)
+std::string& LogHelper::levelToString(LOG_LEVEL level)
 {
     const auto it = mLevelString.find(level);
     if (it != mLevelString.end())
         return it->second;
 
-    return "";
+    return mLevelString.rbegin()->second;
 }
 
 std::string LogHelper::modeToString(int mode)
