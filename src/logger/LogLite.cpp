@@ -30,8 +30,7 @@ public:
 
     virtual ~LogLiteImpl()
     {
-        if (mOfs)
-            mOfs->close();
+        mOfs.reset();
     }
 
     bool init(void);
@@ -118,7 +117,7 @@ void LogLiteImpl::writeLog(LOG_LEVEL level, const std::string& log)
 
     std::ostringstream oss;
     std::string log_prefix = generatePrefix();
-    oss << log_prefix << log << std::endl;
+    oss << log_prefix << log << "\n";
 
     std::lock_guard<std::mutex> lk(mMutex);
     std::string log_item = oss.str();
@@ -216,12 +215,7 @@ std::string& LogLiteImpl::getLogTag(void)
 
 void LogLiteImpl::reset(void)
 {
-    if (mOfs)
-    {
-        mOfs->close();
-        mOfs.reset();
-    }
-
+    mOfs.reset();
     mLogSize = 0;
 }
 
