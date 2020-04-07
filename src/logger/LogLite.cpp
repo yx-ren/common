@@ -348,12 +348,6 @@ void LogLiteImpl::rollback(void)
 
 void LogLiteImpl::addLogRawItem(LOG_LEVEL level, const std::string& log)
 {
-    {
-        std::unique_lock<std::mutex> lk(mMutex);
-        if (level < mLogConfig.level)
-            return;
-    }
-
     //  consider cache this part
     std::ostringstream oss;
     oss << "0x" << std::setw(8) << std::setfill('0')
@@ -399,6 +393,9 @@ void LogLiteImpl::processLogRawItem()
         std::string log_prefix = "";
         {
             std::unique_lock<std::mutex> lk(mMutex);
+            if (rawItem->level < mLogConfig.level)
+                continue;
+
             log_prefix = generatePrefix(rawItem->tid, LogHelper::levelToString(rawItem->level));
         }
         oss << log_prefix << rawItem->msg;
