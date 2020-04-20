@@ -51,6 +51,9 @@ public:
     explicit LogLiteImpl(const LogConfig& conf)
         : mLogConfig(conf)
         , mLogLevel(LogHelper::levelToString(mLogConfig.level))
+        , mLogSize(0)
+        , mIsRunning(false)
+        , mInitThreads(0)
     {
         reset();
     }
@@ -88,10 +91,13 @@ protected:
 
 private:
     mutable std::mutex mMutex;
+    mutable std::mutex mMutexCount;
     LogConfig mLogConfig;
     std::shared_ptr<std::ofstream> mOfs;
     std::string mLogLevel;
     size_t mLogSize;
+    bool mIsRunning;
+    size_t mInitThreads;
 
     std::queue<LogMetaInfoPtr> mLogRawItemQueue;
     std::queue<std::shared_ptr<std::string>> mLogFormatItemQueue;
@@ -108,11 +114,21 @@ private:
 
 LogLiteImpl::~LogLiteImpl()
 {
+    {
+        std::unique_lock<std::mutex> lk(mMutex);
+        mIsRunning = false;
+        mRawItemQueueCond.notify_all();
+        //mFormatItemQueueCond.notify_all();
+    }
+
+
     for (auto& th : mConsumRawThreads)
         th->join();
 
+#if 1
     for (auto& th : mConsumFormatThreads)
         th->join();
+#endif
 }
 
 bool LogLiteImpl::init(void)
@@ -130,12 +146,31 @@ bool LogLiteImpl::init(void)
     for (int i = 0; i != PROCESS_FORMAT_LOG_ITEM_THREADS_NUMBER; i++)
     {
         std::shared_ptr<std::thread> th = std::make_shared<std::thread>(std::bind(&LogLiteImpl::processLogFormatItem, this));
-        mConsumRawThreads.push_back(th);
+        mConsumFormatThreads.push_back(th);
     }
 
     FileHelper::getFileSize(mLogConfig.file_path, mLogSize);
+    if (!reopen())
+        return false;
 
-    return reopen();
+    int retry_times = 0;
+    while (true)
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        std::unique_lock<std::mutex> lk(mMutexCount);
+        if (mInitThreads == PROCESS_RAW_LOG_ITEM_THREADS_NUMBER + PROCESS_FORMAT_LOG_ITEM_THREADS_NUMBER)
+        {
+            std::cout << "init done" << std::endl;
+            break;
+        }
+        else
+        {
+            std::cout << "wait thread inited and retry times:[" << ++retry_times << "]" << std::endl;
+        }
+    }
+    mIsRunning = true;
+
+    return true;
 }
 
 void LogLiteImpl::setConfig(const LogConfig& conf)
@@ -378,11 +413,29 @@ void LogLiteImpl::addLogFormatItem(std::shared_ptr<std::string> format_log)
 
 void LogLiteImpl::processLogRawItem()
 {
+    {
+        std::unique_lock<std::mutex> lk(mMutexCount);
+        mInitThreads++;
+    }
+
     while (true)
     {
         std::unique_lock<std::mutex> lk(mRawItemQueueMutex);
         while (mLogRawItemQueue.empty())
+        {
+            if (!mIsRunning)
+            {
+                mFormatItemQueueCond.notify_one();
+                return;
+            }
+
             mRawItemQueueCond.wait(lk);
+
+#if 0
+            if (!mIsRunning && !mLogRawItemQueue.empty())
+                return;
+#endif
+        }
 
         std::shared_ptr<LogMetaInfo> rawItem = mLogRawItemQueue.front();
         mLogRawItemQueue.pop();
@@ -408,11 +461,20 @@ void LogLiteImpl::processLogRawItem()
 
 void LogLiteImpl::processLogFormatItem()
 {
+    {
+        std::unique_lock<std::mutex> lk(mMutexCount);
+        mInitThreads++;
+    }
+
     while (true)
     {
         std::unique_lock<std::mutex> lk(mFormatItemQueueMutex);
         while (mLogFormatItemQueue.empty())
+        {
+            if (!mIsRunning)
+                return;
             mFormatItemQueueCond.wait_for(lk, std::chrono::seconds(IO_THREAD_INTERVAL_SECOND));
+        }
 
         std::queue<std::shared_ptr<std::string>> format_item_queue;
         format_item_queue.swap(mLogFormatItemQueue);
