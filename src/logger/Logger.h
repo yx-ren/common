@@ -27,50 +27,21 @@ struct LoggerParamer
     std::string file_path;
     std::string file_size;
     std::string file_backup;
-    bool syslog_flag;
-    std::string syslog_ip;
-
 };
 typedef std::shared_ptr<LoggerParamer> LoggerParamerSPtr;
 
-template<typename T>
-class ILogger
+class Logger
 {
 public:
-    virtual ~ILogger() {}
+    void init();
 
-    virtual void init() = 0;
-
-    virtual void init(const LoggerParamer& param) = 0;
-
-    virtual void log(T msg) = 0;
+    void init(const LoggerParamer& param);
 
 private:
-    LoggerParamer mParam;
-    std::shared_ptr<ILogger> mLogger;
+    log4cxx::LoggerPtr mLogger;
 };
-typedef std::shared_ptr<ILogger> ILoggerSPtr;
+typedef std::shared_ptr<Logger> LoggerSPtr;
 
-class Logger4cxx : public ILogger
-{
-public:
-    virtual ~Logger4cxx() {}
-
-    virtual void init() override;
-
-    virtual void init(const LoggerParamer& param) override;
-};
-typedef std::shared_ptr<Logger4cxx> Logger4cxxSPtr;
-
-class Glogger : public ILogger
-{
-    virtual ~Glogger() {}
-
-    virtual void init() override;
-
-    virtual void init(const LoggerParamer& param) override;
-};
-typedef std::shared_ptr<Glogger> GloggerSPtr;
 
 SGLD_END
 
