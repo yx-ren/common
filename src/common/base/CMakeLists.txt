@@ -1,6 +1,4 @@
 SET(target "cbase")
-#ADD_SUBDIRECTORY(logger)
-#ADD_SUBDIRECTORY(test)
 
 FILE(GLOB BASE_HEADERS ./*.h)
 FILE(GLOB BASE_SOURCES ./.cpp)
@@ -14,15 +12,11 @@ ADD_LIBRARY(${target} SHARED
     )
 TARGET_LINK_LIBRARIES(${target} log4cxx)
 
-#SET(DETOUR_SDK_HEADRES
-#    SGDetour.h
-#    )
-#
-#INSTALL(FILES ${DETOUR_SDK_HEADRES} DESTINATION include/skyguard/LinuxDetours/detours/sdk COMPONENT dev)
-#INSTALL(TARGETS ${target} DESTINATION lib COMPONENT dev)
-#INSTALL(TARGETS ${target}_static DESTINATION lib COMPONENT dev)
-#
-## copy 3rd(glog)
+INSTALL(FILES ${BASE_HEADERS} DESTINATION include/common/base/ COMPONENT dev)
+INSTALL(FILES ${LOGGER_HEADERS} DESTINATION include/common/base/logger COMPONENT dev)
+INSTALL(TARGETS ${target} DESTINATION lib COMPONENT dev)
+
+# copy 3rd(glog)
 #INSTALL(DIRECTORY /usr/local/include/gflags /usr/local/include/glog DESTINATION include USE_SOURCE_PERMISSIONS COMPONENT dev)
 #INSTALL(FILES /usr/local/lib/libglog.so.0.0.0 DESTINATION lib COMPONENT dev)
 
