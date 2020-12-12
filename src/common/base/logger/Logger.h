@@ -12,13 +12,13 @@ struct LoggerParameter
     LoggerParameter()
     {
         processor_tag = "sys";
-        module_tag = "MC";
-        level = "TRACE";
+        module_tag = "CAE";
+        level = "DEBUG";
         console_flag = true;
         file_flag = true;
         file_path = "/var/log/dlp";
         file_size = "1024000";
-        file_backup = "4";
+        file_backup = "10";
     }
     std::string processor_tag;
     std::string module_tag;
@@ -34,14 +34,21 @@ typedef std::shared_ptr<LoggerParameter> LoggerParameterSPtr;
 class Logger
 {
 public:
-    void init();
+    ~Logger();
 
     void init(const LoggerParameter& param);
 
-    log4cxx::LoggerPtr get_logger() const;
+    void finalize();
+
+    void updateLevel(const std::string& level);
+
+    log4cxx::LoggerPtr getRawLogger() const;
+
+    log4cxx::LoggerPtr getRawLogger(const std::string& tag) const;
 
 private:
     log4cxx::LoggerPtr mLogger;
+    LoggerParameter mParam;
 };
 typedef std::shared_ptr<Logger> LoggerSPtr;
 

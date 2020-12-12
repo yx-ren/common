@@ -8,6 +8,10 @@
 
 CBASE_LOGGER_BEGIN
 
+Logger::~Logger()
+{
+}
+
 void Logger::init(const LoggerParameter& param)
 {
     using namespace log4cxx;
@@ -43,11 +47,29 @@ void Logger::init(const LoggerParameter& param)
     PropertyConfigurator::configure(props);
 
     mLogger = log4cxx::Logger::getLogger(param.module_tag);
+    mParam = param;
 }
 
-log4cxx::LoggerPtr Logger::get_logger() const
+void Logger::finalize()
+{
+    if (mLogger)
+        mLogger->removeAllAppenders();
+}
+
+void Logger::updateLevel(const std::string& level)
+{
+    mLogger->setLevel(log4cxx::Level::toLevelLS(level));
+}
+
+log4cxx::LoggerPtr Logger::getRawLogger() const
 {
     return mLogger;
+}
+
+log4cxx::LoggerPtr Logger::getRawLogger(const std::string& tag) const
+{
+    std::string new_tag = mParam.module_tag + "." + tag;
+    return mLogger->getLogger(new_tag.c_str());
 }
 
 CBASE_LOGGER_END

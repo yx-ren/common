@@ -25,13 +25,13 @@ int main(int argc, char* argv[])
 {
     LoggerParameter logger_param;
     logger_param.file_path = "./SingleObjecTest.log";
-    Logger logger;
-    logger.init(logger_param);
+    LoggerSPtr logger = std::make_shared<Logger>();
+    logger->init(logger_param);
 
     auto thread_generate_random = [&] ()
     {
         auto random_factory = IRandomFactory::getInstance();
-        LOG4CXX_INFO(logger.get_logger(),
+        LOG4CXX_INFO(logger->getRawLogger(),
                 "single object address:[" << random_factory << "], "
                 "generate random:" << random_factory->generate_random());
     };
