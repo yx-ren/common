@@ -1,13 +1,11 @@
 #include <common/base/logger/LoggerManager.h>
 #include <algorithm>
-#include <iostream>
 
 CBASE_LOGGER_BEGIN
 
 std::vector<log4cxx::LoggerPtr> LoggerManager::mLoggers =
     {
         log4cxx::Logger::getLogger("SysLog"),
-        //log4cxx::Logger::getLogger("traffic"),
     };
 std::mutex LoggerManager::mMutex;
 

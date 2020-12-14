@@ -1,5 +1,4 @@
 #include <common/base/logger/LoggerManager.h>
-#include <iostream>
 
 using namespace CBASE_LOGGER_NAMESPACE;
 
