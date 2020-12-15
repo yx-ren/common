@@ -1,4 +1,6 @@
+#include <common/base/logger/Logger.h>
 #include <common/base/logger/LoggerManager.h>
+#include <iostream>
 
 using namespace CBASE_LOGGER_NAMESPACE;
 
@@ -60,9 +62,9 @@ int main(int argc, const char* argv[])
     LoggerSPtr logger_SysLog = std::make_shared<Logger>();
     logger_SysLog->init(logger_SysLog_param);
 
-    LoggerManager::getInstance()->addLogger(logger_traffic);
-    LoggerManager::getInstance()->addLogger(logger_access);
-    LoggerManager::getInstance()->addLogger(logger_SysLog);
+    LoggerManager::getInstance()->addLogger(logger_traffic->getRawLogger());
+    LoggerManager::getInstance()->addLogger(logger_access->getRawLogger());
+    LoggerManager::getInstance()->addLogger(logger_SysLog->getRawLogger());
 
     for (int i = 0; i != 5; i++)
     {
@@ -72,20 +74,20 @@ int main(int argc, const char* argv[])
         LOGT_ACCESS_INFO("accsss_tag_1", "this is access logger");
         LOGT_ACCESS_INFO("accsss_tag_2", "this is access logger");
 
-        LOG_SYS_TRACE("TRACE, this log generate by LoggerManager");
-        LOGT_SYS_TRACE("sys_tag", "[TRACE] level, this log generate by LoggerManager");
+        CB_TRACE("TRACE, this log generate by LoggerManager");
+        CBT_TRACE("sys_tag", "[TRACE] level, this log generate by LoggerManager");
 
-        LOG_SYS_DEBUG("DEBUG, this log generate by LoggerManager");
-        LOGT_SYS_DEBUG("sys_tag", "[DEBUG] level, this log generate by LoggerManager");
+        CB_DEBUG("DEBUG, this log generate by LoggerManager");
+        CBT_DEBUG("sys_tag", "[DEBUG] level, this log generate by LoggerManager");
 
-        LOG_SYS_INFO("INFO, this log generate by LoggerManager");
-        LOGT_SYS_INFO("sys_tag", "[INFO] level, this log generate by LoggerManager");
+        CB_INFO("INFO, this log generate by LoggerManager");
+        CBT_INFO("sys_tag", "[INFO] level, this log generate by LoggerManager");
 
-        LOG_SYS_WARN("WARN, this log generate by LoggerManager");
-        LOGT_SYS_WARN("sys_tag", "[WARN] level, this log generate by LoggerManager");
+        CB_WARN("WARN, this log generate by LoggerManager");
+        CBT_WARN("sys_tag", "[WARN] level, this log generate by LoggerManager");
 
-        LOG_SYS_ERROR("ERROR, this log generate by LoggerManager");
-        LOGT_SYS_ERROR("sys_tag", "[ERROR] level, this log generate by LoggerManager");
+        CB_ERROR("ERROR, this log generate by LoggerManager");
+        CBT_ERROR("sys_tag", "[ERROR] level, this log generate by LoggerManager");
     }
 
     return 0;

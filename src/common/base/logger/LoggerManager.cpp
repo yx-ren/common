@@ -7,44 +7,39 @@ std::vector<log4cxx::LoggerPtr> LoggerManager::mLoggers =
     {
         log4cxx::Logger::getLogger("SysLog"),
     };
-std::mutex LoggerManager::mMutex;
 
 LoggerManager::~LoggerManager()
 {
 }
 
-void LoggerManager::addLogger(const LoggerSPtr& logger)
+void LoggerManager::addLogger(const log4cxx::LoggerPtr logger)
 {
-    std::unique_lock<std::mutex> lock(mMutex);
-    mLoggers.push_back(logger->getRawLogger());
+    auto logger_it = std::find_if(mLoggers.begin(), mLoggers.end(),
+            [&](const log4cxx::LoggerPtr saved_logger) { return saved_logger == logger;});
+    if (logger_it == mLoggers.end())
+        mLoggers.push_back(logger);
 }
 
 log4cxx::LoggerPtr LoggerManager::getLogger(const std::string& loggerName)
 {
-    std::unique_lock<std::mutex> lock(mMutex);
     auto logger = std::find_if(mLoggers.begin(), mLoggers.end(),
-            [&](const log4cxx::LoggerPtr logger) { return logger->getName() == loggerName;});
+            [&](const log4cxx::LoggerPtr saved_logger) { return saved_logger->getName() == loggerName;});
     return logger != mLoggers.end() ? *logger : log4cxx::LoggerPtr();
 }
 
 log4cxx::LoggerPtr LoggerManager::getLogger(const std::string& loggerName, const std::string& tag)
 {
-    std::unique_lock<std::mutex> lock(mMutex);
-    auto logger = std::find_if(mLoggers.begin(), mLoggers.end(),
-            [&](const log4cxx::LoggerPtr logger) { return logger->getName() == loggerName;});
-
-    log4cxx::LoggerPtr found_logger;
-    if (logger != mLoggers.end())
+    log4cxx::LoggerPtr found_logger = getLogger(loggerName);
+    if (found_logger != log4cxx::LoggerPtr())
     {
         std::string new_tag = loggerName + "." + tag;
-        found_logger = (*logger)->getLogger(new_tag.c_str());
+        return found_logger->getLogger(new_tag.c_str());
     }
     return found_logger;
 }
 
 void LoggerManager::removeLogger(const log4cxx::LoggerPtr logger)
 {
-    std::unique_lock<std::mutex> lock(mMutex);
     mLoggers.erase(std::remove(mLoggers.begin(), mLoggers.end(), logger), mLoggers.end());
 }
 

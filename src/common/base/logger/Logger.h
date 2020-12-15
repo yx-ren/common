@@ -34,8 +34,6 @@ typedef std::shared_ptr<LoggerParameter> LoggerParameterSPtr;
 class Logger
 {
 public:
-    ~Logger();
-
     void init(const LoggerParameter& param);
 
     void finalize();
