@@ -13,8 +13,11 @@ smart_install()
     fi
 
     PACKAGE_NAME="$1"
-    DUMMY=$(dpkg -l | grep -E "^.* $PACKAGE_NAME .*$")
+    #DUMMY=$(dpkg -l | grep -E "^.* $PACKAGE_NAME .*$")
+    #RESULT=$(echo $?)
+    DUMMY=$(rpm -qa | grep $PACKAGE_NAME)
     RESULT=$(echo $?)
+
 
     if [ $RESULT -ne 0 ]; then
         while true
@@ -22,7 +25,7 @@ smart_install()
             read -p "preparing to install package: $PACKAGE_NAME, [yes/no]: " prompt
             case $prompt in
             y|yes)
-                sudo apt-get -y install "$PACKAGE_NAME"
+                sudo yum install -y "$PACKAGE_NAME"
                 break;;
             n|no)
                 break;;
