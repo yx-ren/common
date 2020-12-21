@@ -1,5 +1,6 @@
 CMAKE_MINIMUM_REQUIRED(VERSION 2.8)
-PROJECT(common)
+PROJECT(common CXX C)
+set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake-modules")
 
 set(COMMON_MAJOR_VERSION 1)
 set(COMMON_MINOR_VERSION 0)
@@ -35,6 +36,19 @@ ELSE()
     SET(CMAKE_EXE_LINKER_FLAGS_RELEASE "${CMAKE_EXE_LINKER_FLAGS_RELEASE} /INCREMENTAL:NO /DEBUG /OPT:REF /OPT:ICF")
     SET(CMAKE_SHARED_LINKER_FLAGS_RELEASE "${CMAKE_SHARED_LINKER_FLAGS_RELEASE} /INCREMENTAL:NO /DEBUG /OPT:REF /OPT:ICF")
 ENDIF()
+
+find_package(Log4CXX)
+
+if (Log4CXX_FOUND)
+   include_directories(${Log4CXX_INCLUDE_DIRS})
+   #link_libraries(${Log4CXX_LIBRARIES})
+else()
+   if (NOT WIN32 AND NOT APPLE)
+   message(FATAL_ERROR "Log4CXX is not found on this machine.")
+   else()
+   message("log4cxx is not found.")
+   endif()
+endif()
 
 include_directories(${PROJECT_SOURCE_DIR}/src)
 set(CMAKE_VERBOSE_MAKEFILE ON)

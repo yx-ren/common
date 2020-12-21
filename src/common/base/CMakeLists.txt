@@ -10,14 +10,10 @@ ADD_LIBRARY(${target} SHARED
     ${BASE_HEADERS} ${BASE_SOURCES}
     ${LOGGER_HEADERS} ${LOGGER_SOURCES}
     )
-TARGET_LINK_LIBRARIES(${target} log4cxx)
+TARGET_LINK_LIBRARIES(${target} ${Log4CXX_LIBRARIES})
 
 INSTALL(FILES ${BASE_HEADERS} DESTINATION include/common/base/ COMPONENT dev)
 INSTALL(FILES ${LOGGER_HEADERS} DESTINATION include/common/base/logger COMPONENT dev)
 INSTALL(TARGETS ${target} DESTINATION lib COMPONENT dev)
-
-# copy 3rd(glog)
-#INSTALL(DIRECTORY /usr/local/include/gflags /usr/local/include/glog DESTINATION include USE_SOURCE_PERMISSIONS COMPONENT dev)
-#INSTALL(FILES /usr/local/lib/libglog.so.0.0.0 DESTINATION lib COMPONENT dev)
 
 ADD_SUBDIRECTORY(tests)
