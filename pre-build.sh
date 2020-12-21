@@ -13,7 +13,7 @@ smart_install()
     fi
 
     PACKAGE_NAME="$1"
-    DUMMY=$(dpkg -l | grep -E "^.* $PACKAGE_NAME .*$")
+    DUMMY=$(dpkg -l | grep -E "^.*$PACKAGE_NAME.*$")
     RESULT=$(echo $?)
 
     if [ $RESULT -ne 0 ]; then
