@@ -4,6 +4,12 @@
 
 using namespace CBASE_LOGGER_NAMESPACE;
 
+#define CUSTOMT_TRACE(fmt) CBT_TRACE("custom_tag", fmt)
+#define CUSTOMT_DEBUG(fmt) CBT_DEBUG("custom_tag", fmt)
+#define CUSTOMT_INFO(fmt) CBT_INFO("custom_tag", fmt)
+#define CUSTOMT_WARN(fmt) CBT_WARN("custom_tag", fmt)
+#define CUSTOMT_ERROR(fmt) CBT_ERROR("custom_tag", fmt)
+
 #define LOG_TRAFFIC_TRACE(fmt) LOG4CXX_TRACE(CBASE_LOGGER_NAMESPACE::LoggerManager::getLogger("traffic"), fmt)
 #define LOG_TRAFFIC_DEBUG(fmt) LOG4CXX_DEBUG(CBASE_LOGGER_NAMESPACE::LoggerManager::getLogger("traffic"), fmt)
 #define LOG_TRAFFIC_INFO(fmt) LOG4CXX_INFO(CBASE_LOGGER_NAMESPACE::LoggerManager::getLogger("traffic"), fmt)
@@ -88,6 +94,8 @@ int main(int argc, const char* argv[])
 
         CB_ERROR("ERROR, this log generate by LoggerManager");
         CBT_ERROR("sys_tag", "[ERROR] level, this log generate by LoggerManager");
+
+        CUSTOMT_INFO("INFO, syslogger warp a custom tag");
     }
 
     return 0;
