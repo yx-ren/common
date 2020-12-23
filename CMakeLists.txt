@@ -37,7 +37,18 @@ ELSE()
     SET(CMAKE_SHARED_LINKER_FLAGS_RELEASE "${CMAKE_SHARED_LINKER_FLAGS_RELEASE} /INCREMENTAL:NO /DEBUG /OPT:REF /OPT:ICF")
 ENDIF()
 
+set(Boost_USE_STATIC_LIBS OFF)
+set(Boost_USE_MULTITHREAD ON)
+set(Boost_USE_STATIC_RUNTIME OFF)
+find_package(Boost COMPONENTS thread filesystem system program_options chrono iostreams locale)
 find_package(Log4CXX)
+
+if (Boost_FOUND)
+   include_directories(${Boost_INCLUDE_DIRS})
+   #link_libraries(${Boost_LIBRARIES})
+else()
+   message(FATAL_ERROR "Boost devel package is not found on this machine.")
+endif()
 
 if (Log4CXX_FOUND)
    include_directories(${Log4CXX_INCLUDE_DIRS})

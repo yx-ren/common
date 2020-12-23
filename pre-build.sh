@@ -36,3 +36,10 @@ smart_install()
 }
 
 smart_install liblog4cxx10-dev
+smart_install libboost-thread-dev
+smart_install libboost-filesystem-dev
+smart_install libboost-system-dev
+smart_install libboost-program-options-dev
+smart_install libboost-chrono-dev
+smart_install libboost-iostreams-dev
+smart_install libboost-locale-dev
