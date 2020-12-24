@@ -1,3 +1,6 @@
+#ifndef __COMMON_BASE_SINGLE_OBJECT_H__
+#define __COMMON_BASE_SINGLE_OBJECT_H__
+
 #include <mutex>
 #include <atomic>
 #include <common/base/common.h>
@@ -45,3 +48,5 @@ template<typename T>
 std::mutex SingleObject<T>::mMutex;
 
 CBASE_END
+
+#endif

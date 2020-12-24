@@ -40,7 +40,7 @@ ENDIF()
 set(Boost_USE_STATIC_LIBS OFF)
 set(Boost_USE_MULTITHREAD ON)
 set(Boost_USE_STATIC_RUNTIME OFF)
-find_package(Boost COMPONENTS thread filesystem system program_options chrono iostreams locale)
+find_package(Boost 1.58.0 COMPONENTS thread filesystem system program_options chrono iostreams locale)
 find_package(Log4CXX)
 
 if (Boost_FOUND)
