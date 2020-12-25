@@ -12,5 +12,12 @@ ADD_EXECUTABLE(single_obj_test
     ./single_obj_test.cpp
     )
 
+ADD_EXECUTABLE(config_parser_test
+    ./ConfigParserTest.cpp
+    )
+
 TARGET_LINK_LIBRARIES(logger_test "cbase")
 TARGET_LINK_LIBRARIES(single_obj_test "cbase")
+TARGET_LINK_LIBRARIES(config_parser_test "cbase")
+
+file(COPY "./etc/test.xml" DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/etc)

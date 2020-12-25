@@ -1,0 +1,17 @@
+<?xml encoding="utf-8" version="1.0"?>
+<config>
+    <logging>
+        <level>DEBUG</level>
+    </logging>
+    <components>
+        <component name="DownloadService">
+            <enabled>false</enabled>
+            <licensed>true</licensed>
+        </component>
+        <component name="TestGetAttribute">
+        </component>
+    </components>
+    <testChinese>中国</testChinese>
+    <测试结点>中央</测试结点>
+    <testChinese1 name="cnode">电视台</testChinese1>
+</config>
