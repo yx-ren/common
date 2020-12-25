@@ -22,6 +22,8 @@
 #define CBASE_BEGIN namespace __common__ { namespace base {
 #define CBASE_END } /*end of namespace __common__ */ } /*end of namespace base */
 
+#define CB_TRACE_FUNC() CB_TRACE(BOOST_CURRENT_FUNCTION)
+
 CBASE_BEGIN
 template <typename _Tp>
     using sp = boost::shared_ptr<_Tp>;
