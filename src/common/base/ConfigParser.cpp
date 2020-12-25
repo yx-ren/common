@@ -278,7 +278,7 @@ bool ConfigParser::save(const std::wstring &filename) const
 
 bool ConfigParser::save(std::wostream &os) const
 {
-    boost::property_tree::xml_writer_settings<std::wstring> settings(' ', 4);
+    auto settings = boost::property_tree::xml_writer_make_settings<wchar_t>(L' ', 4, L"utf-8");
     read_lock rl(mLock);
     write_xml(os, mConfigTree, settings);
     return true;

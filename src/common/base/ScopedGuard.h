@@ -36,7 +36,7 @@ private:
 
 #define SCOPEDGUARD_LINENAME_CAT(name, line) name##line
 #define SCOPEDGUARD_LINENAME(name, line) SCOPEDGUARD_LINENAME_CAT(name, line)
-#define ON_SCOPE_EXIT(callback) ::skyguard::base::ScopedGuard SCOPEDGUARD_LINENAME(EXIT, __LINE__)(callback)
+#define ON_SCOPE_EXIT(callback) CBASE_NAMESPACE::ScopedGuard SCOPEDGUARD_LINENAME(EXIT, __LINE__)(callback)
 
 CBASE_END
 #endif
