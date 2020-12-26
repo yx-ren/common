@@ -12,11 +12,11 @@ struct LoggerParameter
     LoggerParameter()
     {
         processor_tag = "sys";
-        module_tag = "CAE";
+        module_tag = "SysLog";
         level = "DEBUG";
         console_flag = true;
         file_flag = true;
-        file_path = "/var/log/dlp";
+        file_path = "/var/log/cblog";
         file_size = "1024000";
         file_backup = "10";
     }
