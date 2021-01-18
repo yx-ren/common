@@ -1,6 +1,12 @@
 #ifndef __COMMON_BASE_CONFIG_PARSER_H__
 #define __COMMON_BASE_CONFIG_PARSER_H__
 
+#include <iostream>
+#include <algorithm>
+#include <list>
+#include <map>
+#include <string>
+
 #include <boost/shared_ptr.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/xml_parser.hpp>
@@ -15,13 +21,7 @@
 #include <common/base/common.h>
 #include <common/base/logger/LoggerManager.h>
 #include <common/base/Convertor.h>
-
-#include <iostream>
-#include <algorithm>
-#include <list>
-#include <map>
-#include <string>
-
+#include <common/base/cbase_export.h>
 
 using boost::property_tree::wptree;
 using namespace BOOST_SPIRIT_CLASSIC_NS;
@@ -34,7 +34,7 @@ typedef std::map<std::string, std::string> str2str_map;
 typedef std::list<wstr2wstr_map> wstr2wstr_maplist;
 typedef std::list<str2str_map> str2str_maplist;
 
-class PathNode
+class CBASE_EXPORT PathNode
 {
 public:
     PathNode()
@@ -113,7 +113,7 @@ private:
 
 typedef sp<PathNode> PathNodePtr;
 
-class ParsedPath
+class CBASE_EXPORT ParsedPath
 {
 public:
     ParsedPath()
@@ -164,7 +164,7 @@ private:
     PathNodePtr            mCurrNode;
 };
 
-struct SimplePathParser : public grammar<SimplePathParser>
+struct CBASE_EXPORT SimplePathParser : public grammar<SimplePathParser>
 {
     template <typename ScannerT>
         struct definition
@@ -215,7 +215,7 @@ struct SimplePathParser : public grammar<SimplePathParser>
 };
 
 
-class ConfigParser : private boost::noncopyable
+class CBASE_EXPORT ConfigParser : private boost::noncopyable
 {
 public:
     ConfigParser(const std::wstring &filename);

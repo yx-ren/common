@@ -6,18 +6,19 @@
 #include <common/base/common.h>
 #include <common/base/ConfigParser.h>
 #include <common/base/IBaseService.h>
+#include <common/base/cbase_export.h>
 
 using boost::property_tree::basic_ptree;
 
 CBASE_BEGIN
 
-struct CMParameter
+struct CBASE_EXPORT CMParameter
 {
     CMParameter(const std::string &filename="");
     std::string mFileName;
 };
 
-class ConfigurationManager : public IBaseService
+class CBASE_EXPORT ConfigurationManager : public IBaseService
 {
 public:
     ConfigurationManager(const std::string &filename);

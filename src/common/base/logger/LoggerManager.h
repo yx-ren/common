@@ -6,6 +6,7 @@
 #include <log4cxx/logger.h>
 #include <common/base/SingleObject.h>
 #include <common/base/logger/common.h>
+#include <common/base/cbase_export.h>
 
 
 #define CB_TRACE(fmt) CB_LOG_SYS_TRACE(fmt)
@@ -54,7 +55,7 @@
 
 CBASE_LOGGER_BEGIN
 
-class LoggerManager : public SingleObject<LoggerManager>
+class CBASE_EXPORT LoggerManager : public SingleObject<LoggerManager>
 {
 public:
     virtual ~LoggerManager();

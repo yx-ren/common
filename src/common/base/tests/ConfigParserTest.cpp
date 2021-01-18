@@ -30,5 +30,10 @@ int main(int argc, const char* argv[])
     std::string  value3 = configParser.getValue<std::string>("config.testChinese1[name=\"cnode\"]");
     BOOST_ASSERT(value3 == "电视台");
 
+    BOOST_ASSERT(configParser.setValue<std::string>("config.testChinese", "reset tag"));
+    std::string  value4 = configParser.getValue<std::string>("config.testChinese");
+    BOOST_ASSERT(value4 == "reset tag");
+    BOOST_ASSERT(configParser.save("./etc/test.reset.xml"));
+
     return 0;
 }

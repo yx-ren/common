@@ -17,6 +17,8 @@
 #include <boost/scoped_ptr.hpp>
 #include <boost/pointer_cast.hpp>
 
+#include <common/base/cbase_export.h>
+
 #define CBASE_NAMESPACE __common__::base
 
 #define CBASE_BEGIN namespace __common__ { namespace base {
@@ -60,7 +62,7 @@ template <typename _Tp>
 
 typedef boost::shared_mutex rwmutex;
 
-class write_lock
+class CBASE_EXPORT write_lock
 {
 public:
     write_lock()
@@ -83,7 +85,7 @@ private:
     boost::unique_lock<boost::shared_mutex> m_internal_write_lock;
 };
 
-class read_lock
+class CBASE_EXPORT read_lock
 {
 public:
     read_lock()

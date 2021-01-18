@@ -4,6 +4,7 @@
 #include <memory>
 #include <log4cxx/logger.h>
 #include <common/base/logger/common.h>
+#include <common/base/cbase_export.h>
 
 CBASE_LOGGER_BEGIN
 
@@ -31,7 +32,7 @@ struct LoggerParameter
 };
 typedef std::shared_ptr<LoggerParameter> LoggerParameterSPtr;
 
-class Logger
+class CBASE_EXPORT Logger
 {
 public:
     void init(const LoggerParameter& param);
