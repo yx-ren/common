@@ -20,9 +20,14 @@ ADD_EXECUTABLE(time_test
     ./TimeTest.cpp
     )
 
+ADD_EXECUTABLE(app_main_test
+    ./AppMainTest.cpp
+    )
+
 TARGET_LINK_LIBRARIES(logger_test "cbase")
 TARGET_LINK_LIBRARIES(single_obj_test "cbase")
 TARGET_LINK_LIBRARIES(config_parser_test "cbase")
 TARGET_LINK_LIBRARIES(time_test "cbase")
+TARGET_LINK_LIBRARIES(app_main_test "cbase")
 
 file(COPY "./etc/test.xml" DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/etc)

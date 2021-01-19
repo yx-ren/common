@@ -8,6 +8,12 @@
 
 CBASE_LOGGER_BEGIN
 
+void Logger::init()
+{
+    LoggerParameter param;
+    Logger::init(param);
+}
+
 void Logger::init(const LoggerParameter& param)
 {
     using namespace log4cxx;

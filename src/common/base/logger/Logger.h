@@ -35,6 +35,7 @@ typedef std::shared_ptr<LoggerParameter> LoggerParameterSPtr;
 class CBASE_EXPORT Logger
 {
 public:
+    void init();
     void init(const LoggerParameter& param);
 
     void finalize();

@@ -8,6 +8,7 @@
 #include <common/base/logger/common.h>
 #include <common/base/cbase_export.h>
 
+#define CB_TRACE_FUNCTION() CB_LOG_SYS_TRACE(__FUNCTION__)
 
 #define CB_TRACE(fmt) CB_LOG_SYS_TRACE(fmt)
 #define CB_DEBUG(fmt) CB_LOG_SYS_DEBUG(fmt)

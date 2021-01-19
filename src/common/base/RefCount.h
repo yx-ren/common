@@ -4,11 +4,12 @@
 #include <boost/intrusive_ptr.hpp>
 #include <boost/noncopyable.hpp>
 #include <common/base/common.h>
+#include <common/base/cbase_export.h>
 
 CBASE_BEGIN
 class RefCount;
 
-class RefCount : private boost::noncopyable
+class CBASE_EXPORT RefCount : private boost::noncopyable
 {
 public:
 #ifdef WIN32

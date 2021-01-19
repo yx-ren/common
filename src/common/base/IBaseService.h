@@ -2,10 +2,11 @@
 #define __COMMON_BASE_I_BASE_SERVICE_H__
 #include <common/base/common.h>
 #include <common/base/IBaseObject.h>
+#include <common/base/cbase_export.h>
 
 CBASE_BEGIN
 
-class IBaseService : public IBaseObject
+class CBASE_EXPORT IBaseService : public IBaseObject
 {
 public:
     IBaseService(const char *tag)

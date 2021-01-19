@@ -4,10 +4,11 @@
 #include <log4cxx/logger.h>
 #include <common/base/common.h>
 #include <common/base/RefCount.h>
+#include <common/base/cbase_export.h>
 
 CBASE_BEGIN
 
-class IBaseObject : virtual public RefCount
+class CBASE_EXPORT IBaseObject : virtual public RefCount
 {
 public:
     IBaseObject();

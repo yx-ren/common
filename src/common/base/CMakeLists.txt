@@ -6,9 +6,13 @@ FILE(GLOB BASE_SOURCES ./*.cpp)
 FILE(GLOB LOGGER_HEADERS ./logger/*.h)
 FILE(GLOB LOGGER_SOURCES ./logger/*.cpp)
 
+
+include_directories(${PROJECT_SOURCE_DIR}/3rdparty/backtrace)
+
 ADD_LIBRARY(${target} SHARED
     ${BASE_HEADERS} ${BASE_SOURCES}
     ${LOGGER_HEADERS} ${LOGGER_SOURCES}
+    ${PROJECT_SOURCE_DIR}/3rdparty/backtrace/libs/backtrace/src/backtrace.cpp
     )
 TARGET_LINK_LIBRARIES(${target} ${Log4CXX_LIBRARIES})
 TARGET_LINK_LIBRARIES(${target} ${Boost_LIBRARIES})
