@@ -6,6 +6,7 @@
 #include <string>
 #include <list>
 
+#include <boost/version.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/current_function.hpp>
@@ -278,7 +279,11 @@ bool ConfigParser::save(const std::wstring &filename) const
 
 bool ConfigParser::save(std::wostream &os) const
 {
+#if (BOOST_VERSION <= 105500)
+    boost::property_tree::xml_writer_settings<wchar_t> settings(' ', 4);
+#elif (BOOST_VERSION >= 106200)
     boost::property_tree::xml_writer_settings<std::wstring> settings(' ', 4);
+#endif
     read_lock rl(mLock);
     write_xml(os, mConfigTree, settings);
     return true;
