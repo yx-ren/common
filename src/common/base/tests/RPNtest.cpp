@@ -2,7 +2,7 @@
 #include <vector>
 #include <memory>
 
-#include <test/rpn.hpp>
+//#include <test/rpn.hpp>
 
 class Foo
 {
@@ -56,6 +56,7 @@ Bar<int>::Bar(int n)
 template<typename T>
 using vectorPtr = std::shared_ptr<std::vector<T>>;
 
+#if 0
 void test_rpn()
 {
     OperandPtr<std::string> str_oprd(std::make_shared<Operand<std::string>>("3str3"));
@@ -92,9 +93,121 @@ void test_rpn()
     }
 
 }
+#endif
+
+class foo
+{
+public:
+    //virtual ~foo() { std::cout << __FUNCTION__ << std::endl; }
+    ~foo() { std::cout << __FUNCTION__ << std::endl; }
+};
+
+class bar : public foo
+{
+public:
+    //virtual ~bar() { std::cout << __FUNCTION__ << std::endl; }
+    ~bar() { std::cout << __FUNCTION__ << std::endl; }
+};
+
+class foos : public std::vector<foo>
+{
+public:
+    ~foos() { std::cout << __FUNCTION__ << std::endl; }
+};
+
+template<typename T>
+struct tpl_foo
+{
+    tpl_foo(const T& t)
+        : val(t)
+    {}
+
+    T val;
+};
+
+template<typename T>
+std::ostream& operator<<(std::ostream& os, tpl_foo<T> foo)
+{
+    return os << foo.val;
+}
+
+enum CUSTMO_CHANNEL
+{
+    CC_HTTP,
+    CC_HTTPS,
+};
+
+template<typename T>
+void conv2(T t1, T t2)
+{
+    std::cout << t1 << std::endl;
+    std::cout << t2 << std::endl;
+}
+
+#if 1
+template<>
+void conv2(CUSTMO_CHANNEL t1, CUSTMO_CHANNEL t2)
+{
+    std::cout << t1 << std::endl;
+    std::cout << t2 << std::endl;
+}
+#endif
+template <typename T, typename U>
+void tfunc(T a, U b)
+{
+    std::cout << "tfunc 泛化版本函数" << std::endl;
+}
+  
+template <>
+void tfunc(int a, int b)
+{
+    std::cout << "tfunc 全特化版本函数" << std::endl;
+}
 
 int main(int argc, char* argv[])
 {
+    {
+        std::string str(" 1  AND ( 2  OR  3  ) AND ( 4  OR  5  )");
+        str.replace();
+
+        return 0;
+    }
+
+    {
+        tpl_foo<int> f1(1);
+        tpl_foo<std::string> f2("23");
+
+        std::cout << f1 << std::endl;
+        std::cout << f2 << std::endl;
+
+        return 0;
+    }
+
+    {
+        {
+            std::vector<foo>* p = new foos;
+            //foos* p = new foos;
+            p->push_back(foo());
+            delete p;
+
+            return 0;
+        }
+
+        {
+            bar* p = new bar;
+            delete p;
+            return 0;
+        }
+
+        {
+            foo* p = new bar;
+            delete p;
+        }
+
+
+        return 0;
+    }
+
     {
 #if 0
         FooPtr f1 = std::make_shared<Bar<std::string>>("12345");
@@ -105,7 +218,7 @@ int main(int argc, char* argv[])
     }
 
     {
-        test_rpn();
+        //test_rpn();
         return 0;
     }
 
