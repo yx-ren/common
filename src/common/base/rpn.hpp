@@ -117,6 +117,7 @@ public:
         , mPriority(priority)
         , mCalc(calc)
     {}
+
     BinOpterator(const std::string& sign, int priority, BinCalculator<T> calc)
         : OpSign(OPST_OPERATOR, sign)
         , mPriority(priority)
@@ -124,6 +125,11 @@ public:
     {}
 
     virtual ~BinOpterator() {}
+
+    int getPriority() const
+    {
+        return mPriority;
+    }
 
     OperandPtr<T> calculate(OperandPtr<T> lhs, OperandPtr<T> rhs) { return mCalc(lhs, rhs); }
 
@@ -219,9 +225,15 @@ public:
 
     SignExpression<T> generateSignExp(const std::stack<std::string>& exp) const;
 
+    void registerOprdCaster(std::function<T(const std::string&)> caster)
+    {
+        mCaster = caster;
+    }
+
 private:
     OperatorTable mOptrTable;
     BinOpteratorManagerPtr mOptrManager;
+    std::function<T(const std::string&)> mCaster;
 };
 
 template <typename T>
@@ -258,7 +270,7 @@ SignExpression<T> ExpressionTokenizer<T>::generateSignExp(const std::stack<std::
         }
         else
         {
-            op_sign = std::make_shared<Operand<T>>(sign);
+            op_sign = std::make_shared<Operand<T>>(mCaster(sign));
         }
     }
 
@@ -282,7 +294,6 @@ struct BaseExpression
 
 #endif
 
-#if 1
 template<typename T>
 class PRNParser
 {
@@ -306,6 +317,60 @@ protected:
 private:
     ExpressionTokenizer mTokenizer;
 };
+
+template<typename T>
+SignExpression<T> PRNParser::infix2Postfix(const SignExpression<T> infix_exp)
+{
+    SignExpression<T> sign_exp;
+    std::stack<BinOpteratorPtr<T>> operands;
+
+    for (const auto& sign : infix_exp)
+    {
+        if (sign->getType() == OPST_OPERAND)
+        {
+            sign_exp.push(sign);
+        }
+        else if (sign->getType() == OPST_OPERATOR)
+        {
+            auto optr = dynamic_pointer_cast<BinOpteratorPtr>(sign);
+            while (!operators.empty())
+            {
+                top_optr = operators.top();
+                if (optr->getPriority() < operators.top()->getPriority())
+                    sign_exp.push(top_optr); operators.pop();
+            }
+
+            if (optr->getSign() == "(")
+                sign_exp.push(sign);
+            else if (optr->getSign() == ")")
+            {
+                bool left_match = false
+                while (!operators.empty())
+                {
+                    top_optr = operators.top();
+                    if (top_optr != "(")
+                        sign_exp.push(top_optr); operators.pop();
+                    else
+                        left_match = true; operators.pop();
+                }
+
+                if (!left_match)
+                    return nullptr;
+            }
+        }
+    }
+
+    if (!operands.empty())
+    {
+        if (operands.top()->getSign() == "(" || operands.top()->getSign() == ")")
+            return nullptr;
+
+        std::copy(operands.begin(), operands.end(), std::back_inserter(sign_exp));
+    }
+
+    return sign_exp;
+}
+
 
 #if 0
 template<typename T>
@@ -338,7 +403,6 @@ OperandPtr<T> RPNExpression<T>::evaluate()
     SignExpression<T> op_signs = mParser.parse(mInfixExpression);
 
     std::stack<OperandPtr<T>> operands;
-    std::stack<OperandPtr<T>> operators;
     while (!op_signs.empty())
     {
         auto sign = op_signs.top(); op_signs.top();
@@ -367,7 +431,6 @@ OperandPtr<T> RPNExpression<T>::evaluate()
 
     return operands.top();
 }
-#endif
 
 // ********************  PRN implemetation end ******************** //
 
