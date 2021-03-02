@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <memory>
 #include <string>
 #include <memory>
 #include <stack>
@@ -89,7 +90,7 @@ template<>
 std::string Operand<bool>::toString() const
 {
     std::ostringstream oss;
-    oss << std::boolalpha << false;
+    oss << std::boolalpha << mOperand;
     return oss.str();
 }
 
@@ -108,14 +109,13 @@ template<typename T>
 class BinOpterator : public OpSign
 {
 public:
-    BinOpterator(const std::string& sign, int priority, BinCalculator<T> calc)
+    BinOpterator(const std::string& sign)
         : OpSign(OPST_OPERATOR, sign)
     {}
 
-    BinOpterator(const std::string& sign, int priority, BinCalculator<T> calc)
+    BinOpterator(const std::string& sign, int priority)
         : OpSign(OPST_OPERATOR, sign)
         , mPriority(priority)
-        , mCalc(calc)
     {}
 
     BinOpterator(const std::string& sign, int priority, BinCalculator<T> calc)
@@ -150,6 +150,7 @@ class BinOpteratorManager
 public:
     BinOpteratorManager()
     {
+#if 0
         std::vector<BinOpteratorPtr<T>> PreBinOpteratorStore =
         {
             std::make_shared<BinOpterator<T>>("+", 1, [](OperandPtr<T> lhs, OperandPtr<T> rhs)
@@ -178,6 +179,7 @@ public:
         };
 
         mOpterators.swap(PreBinOpteratorStore);
+#endif
     }
 
     BinOpteratorPtr<T> getOpterator(const std::string& optr)
@@ -185,6 +187,11 @@ public:
         auto ret = std::find_if(mOpterators.begin(), mOpterators.end(),
                 [&](const BinOpteratorPtr<T> bin_optr) { return optr == bin_optr->getSign();});
         return ret != mOpterators.end() ? *ret : nullptr;
+    }
+
+    void setBinOpterators(const std::vector<BinOpteratorPtr<T>>& optrs)
+    {
+        mOpterators = optrs;
     }
 
 protected:
@@ -204,63 +211,67 @@ template<typename T>
 #if 1
 
 typedef std::set<std::string> OperatorTable;
-
-template <typename T>
-    using SignExpression = std::stack<OpSignPtr<T>>;
+typedef std::stack<OpSignPtr> SignExpressionStack;
+typedef std::shared_ptr<SignExpressionStack> SignExpressionStackPtr;
+typedef std::vector<OpSignPtr> SignExpressionVector;
+typedef std::shared_ptr<SignExpressionVector> SignExpressionVectorPtr;
 
 template <typename T>
 class ExpressionTokenizer
 {
 public:
+    ExpressionTokenizer()
+    {}
+
     ExpressionTokenizer(const OperatorTable& optr_tbl)
         : mOptrTable(optr_tbl)
     {}
-
-    void setBinOpteratorManager(BinOpteratorManagerPtr optr_manager)
-    {
-        mOptrManager = optr_manager;
-    }
-
-    std::stack<std::string> tokenize(const std::string& exp) const;
-
-    SignExpression<T> generateSignExp(const std::stack<std::string>& exp) const;
 
     void registerOprdCaster(std::function<T(const std::string&)> caster)
     {
         mCaster = caster;
     }
 
+    void setBinOpteratorManager(BinOpteratorManagerPtr<T> optr_manager)
+    {
+        mOptrManager = optr_manager;
+    }
+
+    std::vector<std::string> tokenize(const std::string& exp) const;
+
+    SignExpressionVector generateSignExp(const std::vector<std::string>& exp) const;
+
 private:
     OperatorTable mOptrTable;
-    BinOpteratorManagerPtr mOptrManager;
+    BinOpteratorManagerPtr<T> mOptrManager;
     std::function<T(const std::string&)> mCaster;
 };
 
 template <typename T>
-std::stack<std::string> ExpressionTokenizer<T>::tokenize(const std::string& exp) const
+std::vector<std::string> ExpressionTokenizer<T>::tokenize(const std::string& exp) const
 {
     std::string preprocess_exp(exp);
     for (const auto optr : mOptrTable)
         boost::replace_all(preprocess_exp, optr, " " + optr + " ");
 
-    std::stack<std::string> signs;
+    std::vector<std::string> signs;
     std::istringstream iss(preprocess_exp);
     std::string word;
     while (iss >> word)
-        signs.push(word);
+        signs.push_back(word);
 
     return signs;
 }
 
 template <typename T>
-SignExpression<T> ExpressionTokenizer<T>::generateSignExp(const std::stack<std::string>& exp) const
+SignExpressionVector ExpressionTokenizer<T>::generateSignExp(const std::vector<std::string>& exp) const
 {
-    auto is_optr = [&mOptrTable](const std::string& sign) -> bool
+    auto is_optr = [&](const std::string& sign) -> bool
     {
-        return mOptrTable.find(sign) != mOptrTable.end() ? true : false;
-    }
+        return (mOptrTable.find(sign) != mOptrTable.end()) ? true : false;
+    };
 
-    SignExpression<T> sign_exp;
+    SignExpressionVector sign_exp;
     for (const auto& sign : exp)
     {
         OpSignPtr op_sign;
@@ -272,11 +283,20 @@ SignExpression<T> ExpressionTokenizer<T>::generateSignExp(const std::stack<std::
         {
             op_sign = std::make_shared<Operand<T>>(mCaster(sign));
         }
+        
+        if (!op_sign)
+        {
+            std::cout << "sign:" << sign << " cannot be parsed" << std::endl;
+            continue;
+        }
+
+        sign_exp.push_back(op_sign);
     }
 
     return sign_exp;
 }
 
+#if 0
 enum EXPESSION_TYPE
 {
     ET_PREFIX,
@@ -289,8 +309,9 @@ struct BaseExpression
 {
     std::string mExp;
     EXPESSION_TYPE mExpType;
-    SignExpression<T> mSignExp;
+    SignExpressionStack mSignExp;
 };
+#endif
 
 #endif
 
@@ -298,83 +319,114 @@ template<typename T>
 class PRNParser
 {
 public:
-    void setTokenizer(ExpressionTokenizer tokenizer)
+    PRNParser() {}
+
+    void setTokenizer(ExpressionTokenizer<T> tokenizer)
     {
         mTokenizer = tokenizer;
     }
 
-    // infix -> infix
-    SignExpression<T> parse(const std::string& infix_exp)
+    SignExpressionStackPtr parse(const std::string& infix_exp)
     {
-        std::stack<std::string> signs = mTokenizer.tokenize(infix_exp);
-        return mTokenizer.generateSignExp(signs);
+        std::vector<std::string> signs = mTokenizer.tokenize(infix_exp);
+        SignExpressionVector sign_exp_vector = mTokenizer.generateSignExp(signs);
+        return infix2Postfix(sign_exp_vector);
     }
 
 protected:
     // infix exp -> postfix exp
-    SignExpression<T> infix2Postfix(const SignExpression<T> infix_exp);
+    SignExpressionStackPtr infix2Postfix(const SignExpressionVector infix_exp);
 
 private:
-    ExpressionTokenizer mTokenizer;
+    ExpressionTokenizer<T> mTokenizer;
 };
 
 template<typename T>
-SignExpression<T> PRNParser::infix2Postfix(const SignExpression<T> infix_exp)
+SignExpressionStackPtr PRNParser<T>::infix2Postfix(const SignExpressionVector infix_exp)
 {
-    SignExpression<T> sign_exp;
-    std::stack<BinOpteratorPtr<T>> operands;
+    SignExpressionStackPtr sign_exp = std::make_shared<SignExpressionStack>();
+    std::stack<BinOpteratorPtr<T>> operators;
 
     for (const auto& sign : infix_exp)
     {
-        if (sign->getType() == OPST_OPERAND)
+        if (sign->getType() == OpSign::OPST_OPERAND)
         {
-            sign_exp.push(sign);
+            sign_exp->push(sign);
         }
-        else if (sign->getType() == OPST_OPERATOR)
+        else if (sign->getType() == OpSign::OPST_OPERATOR)
         {
-            auto optr = dynamic_pointer_cast<BinOpteratorPtr>(sign);
-            while (!operators.empty())
+            auto optr = std::dynamic_pointer_cast<BinOpterator<T>>(sign);
+            if (!optr)
             {
-                top_optr = operators.top();
-                if (optr->getPriority() < operators.top()->getPriority())
-                    sign_exp.push(top_optr); operators.pop();
+                std::cout << "BinOpteratorPtr cast to OpSignPtr failed, sign:" << sign->getSign() << std::endl;
+                return nullptr;
             }
 
             if (optr->getSign() == "(")
-                sign_exp.push(sign);
+                sign_exp->push(sign);
             else if (optr->getSign() == ")")
             {
-                bool left_match = false
+                bool left_match = false;
                 while (!operators.empty())
                 {
-                    top_optr = operators.top();
-                    if (top_optr != "(")
-                        sign_exp.push(top_optr); operators.pop();
+                    auto top_optr = operators.top();
+                    if (top_optr->getSign() != "(")
+                    {
+                        sign_exp->push(top_optr); operators.pop();
+                    }
                     else
+                    {
                         left_match = true; operators.pop();
+                    }
                 }
 
                 if (!left_match)
+                {
+                    std::cout << "'(' not match" << std::endl;
                     return nullptr;
+                }
             }
+            else
+            {
+                while (!operators.empty())
+                {
+                    auto top_optr = operators.top();
+                    if (top_optr->getSign() == "(")
+                        break;
+                    else
+                    {
+                        if (optr->getPriority() <= top_optr->getPriority())
+                            sign_exp->push(top_optr); operators.pop();
+                    }
+                }
+            }
+
+            //if (optr->getSign() != "(" && optr->getSign() != ")")
+                operators.push(optr);
         }
     }
 
-    if (!operands.empty())
+    if (!operators.empty())
     {
-        if (operands.top()->getSign() == "(" || operands.top()->getSign() == ")")
+        if (operators.top()->getSign() == "(")
+        {
+            std::cout << "'(' or ')' not match" << std::endl;
             return nullptr;
+        }
 
-        std::copy(operands.begin(), operands.end(), std::back_inserter(sign_exp));
+        while (!operators.empty())
+        {
+            sign_exp->push(operators.top());
+            operators.pop();
+        }
     }
 
     return sign_exp;
 }
 
-
 #if 0
 template<typename T>
-    using PRNParser = std::function<SignExpression<T>(const std::string& expression) >;
+    using PRNParser = std::function<SignExpressionStack(const std::string& expression) >;
 #endif
 
 template<typename T>
@@ -387,10 +439,7 @@ public:
 
     OperandPtr<T> evaluate();
 
-    void setParser(PRNParser<T> parser) {mParser = parser};
-
-protected:
-    parse();
+    void setParser(PRNParser<T> parser) {mParser = parser;}
 
 private:
     std::string mInfixExpression;
@@ -400,17 +449,17 @@ private:
 template<typename T>
 OperandPtr<T> RPNExpression<T>::evaluate()
 {
-    SignExpression<T> op_signs = mParser.parse(mInfixExpression);
+    SignExpressionStack op_signs = mParser.parse(mInfixExpression);
 
     std::stack<OperandPtr<T>> operands;
     while (!op_signs.empty())
     {
         auto sign = op_signs.top(); op_signs.top();
-        if (sign->getType() == OPST_OPERAND)
+        if (sign->getType() == OpSign::OPST_OPERAND)
         {
             operands.push(sign);
         }
-        else if (sign->getType() == OPST_OPERATOR)
+        else if (sign->getType() == OpSign::OPST_OPERATOR)
         {
             if (operands.size() < 2)
                 return nullptr;
@@ -418,7 +467,7 @@ OperandPtr<T> RPNExpression<T>::evaluate()
             auto lhs_oprd = operands.top(); operands.pop();
             auto rhs_oprd = operands.top(); operands.pop();
 
-            auto optr = dynamic_pointer_cast<BinOpteratorPtr>(sign);
+            auto optr = std::dynamic_pointer_cast<BinOpterator<T>>(sign);
             if (!optr)
                 return nullptr;
 

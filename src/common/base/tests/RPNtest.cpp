@@ -2,61 +2,22 @@
 #include <vector>
 #include <memory>
 
-//#include <test/rpn.hpp>
+//#include <boost/thread.hpp>
+#include <boost/program_options.hpp>
+#include <boost/shared_ptr.hpp>
+#include <boost/make_shared.hpp>
+#include <boost/intrusive_ptr.hpp>
+#include <boost/algorithm/string.hpp>
+#include <boost/format.hpp>
+#include <boost/tokenizer.hpp>
+#include <atomic>
 
-class Foo
-{
-public:
-    Foo() : mFoo(0) {}
+#include <boost/filesystem.hpp>
 
-    Foo(int n) : mFoo(n) {}
+#include <boost/version.hpp>
 
-    virtual ~Foo() {}
+#include <test/rpn/rpn.hpp>
 
-    virtual void dump()
-    {
-        std::cout << mFoo << std::endl;
-    }
-
-private:
-    int mFoo;
-};
-typedef std::shared_ptr<Foo> FooPtr;
-
-template<typename T>
-class Bar : public Foo
-{
-public:
-    Bar(T val) : mBar(val) {}
-
-    virtual ~Bar() {}
-
-    virtual void dump()
-    {
-        Foo::dump();
-        std::cout << mBar << std::endl;
-    }
-
-    using BarPtr_1 = std::shared_ptr<Bar<T>>;
-
-private:
-    T mBar;
-};
-
-template<typename T>
-using BarPtr = std::shared_ptr<Bar<T>>;
-
-typedef std::shared_ptr<Bar<std::string>> BarPtr1;
-
-template<>
-Bar<int>::Bar(int n)
-    : Foo(n)
-{}
-
-template<typename T>
-using vectorPtr = std::shared_ptr<std::vector<T>>;
-
-#if 0
 void test_rpn()
 {
     OperandPtr<std::string> str_oprd(std::make_shared<Operand<std::string>>("3str3"));
@@ -91,171 +52,92 @@ void test_rpn()
         if (oprd_3)
             std::cout << oprd_3->getValue() << std::endl;
     }
-
-}
-#endif
-
-class foo
-{
-public:
-    //virtual ~foo() { std::cout << __FUNCTION__ << std::endl; }
-    ~foo() { std::cout << __FUNCTION__ << std::endl; }
-};
-
-class bar : public foo
-{
-public:
-    //virtual ~bar() { std::cout << __FUNCTION__ << std::endl; }
-    ~bar() { std::cout << __FUNCTION__ << std::endl; }
-};
-
-class foos : public std::vector<foo>
-{
-public:
-    ~foos() { std::cout << __FUNCTION__ << std::endl; }
-};
-
-template<typename T>
-struct tpl_foo
-{
-    tpl_foo(const T& t)
-        : val(t)
-    {}
-
-    T val;
-};
-
-template<typename T>
-std::ostream& operator<<(std::ostream& os, tpl_foo<T> foo)
-{
-    return os << foo.val;
 }
 
-enum CUSTMO_CHANNEL
-{
-    CC_HTTP,
-    CC_HTTPS,
-};
-
-template<typename T>
-void conv2(T t1, T t2)
-{
-    std::cout << t1 << std::endl;
-    std::cout << t2 << std::endl;
-}
-
-#if 1
-template<>
-void conv2(CUSTMO_CHANNEL t1, CUSTMO_CHANNEL t2)
-{
-    std::cout << t1 << std::endl;
-    std::cout << t2 << std::endl;
-}
-#endif
-template <typename T, typename U>
-void tfunc(T a, U b)
-{
-    std::cout << "tfunc 泛化版本函数" << std::endl;
-}
-  
-template <>
-void tfunc(int a, int b)
-{
-    std::cout << "tfunc 全特化版本函数" << std::endl;
-}
 
 int main(int argc, char* argv[])
 {
-    {
-        std::string str(" 1  AND ( 2  OR  3  ) AND ( 4  OR  5  )");
-        str.replace();
-
-        return 0;
-    }
+    std::string exp = "( true  OR  false  ) AND  true  OR ( false  OR  false  )";
+    std::cout << "origin infix exp:\n" << exp << std::endl;
 
     {
-        tpl_foo<int> f1(1);
-        tpl_foo<std::string> f2("23");
-
-        std::cout << f1 << std::endl;
-        std::cout << f2 << std::endl;
-
-        return 0;
-    }
-
-    {
+        // init bin operator manager
+        BinOpteratorManagerPtr<bool> optr_manager(std::make_shared<BinOpteratorManager<bool>>());
+        std::vector<BinOpteratorPtr<bool>> PreBinOpteratorStore =
         {
-            std::vector<foo>* p = new foos;
-            //foos* p = new foos;
-            p->push_back(foo());
-            delete p;
+            std::make_shared<BinOpterator<bool>>("AND", 1, [](OperandPtr<bool> lhs, OperandPtr<bool> rhs)
+                    { return std::make_shared<Operand<bool>>(lhs->getValue() && rhs->getValue()); }),
+            std::make_shared<BinOpterator<bool>>("OR", 1, [](OperandPtr<bool> lhs, OperandPtr<bool> rhs)
+                    { return std::make_shared<Operand<bool>>(lhs->getValue() || rhs->getValue()); }),
+            std::make_shared<BinOpterator<bool>>("(", 1, nullptr),
+            std::make_shared<BinOpterator<bool>>(")", 1, nullptr),
+        };
+        optr_manager->setBinOpterators(PreBinOpteratorStore);
 
-            return 0;
-        }
+        // init tokenizer
+        ExpressionTokenizer<bool> ExpressionTokenizer(OperatorTable({"AND", "OR", "(", ")"}));
+        ExpressionTokenizer.setBinOpteratorManager(optr_manager);
 
+        auto bool_caster = [](const std::string& bool_sign) -> bool
         {
-            bar* p = new bar;
-            delete p;
-            return 0;
-        }
+            return ((bool_sign == "true") ? true : false);
+        };
+        ExpressionTokenizer.registerOprdCaster(bool_caster);
 
+        // dump token result
+        std::vector<std::string> signs = ExpressionTokenizer.tokenize(exp);
+        std::cout << "dump the tokens:" << std::endl;
+        for (const auto sign : signs)
+            std::cout << sign << " ";
+        std::cout << std::endl;
+
+        // dump sign result
+        std::cout << "dump the infix sign expression:" << std::endl;
+        SignExpressionVector sign_exp_vector = ExpressionTokenizer.generateSignExp(signs);
+        for (const auto& sign : sign_exp_vector)
         {
-            foo* p = new bar;
-            delete p;
-        }
-
-
-        return 0;
-    }
-
-    {
 #if 0
-        FooPtr f1 = std::make_shared<Bar<std::string>>("12345");
-        f1->dump();
-
-        return 0;
+            std::cout << "sign:" << sign->getSign()
+                << ", type:" << sign->getType()
+                << " ";
+                //<< std::endl;
+#else
+            std::cout << sign->getSign() << " ";
 #endif
-    }
+        }
+        std::cout << std::endl;
 
-    {
-        //test_rpn();
-        return 0;
-    }
+        // init parser
+        PRNParser<bool> rpn_parser;
+        rpn_parser.setTokenizer(ExpressionTokenizer);
 
-    {
-#if 1
-        Bar<std::string>::BarPtr_1 b3(new Bar<std::string>("12345"));
-        b3->dump();
-        return 0;
+        // test rpn parser
+        auto post_fix = rpn_parser.parse(exp);
+        SignExpressionVector post_fix_exp;
+        if (post_fix)
+        {
+            while (!post_fix->empty())
+            {
+                post_fix_exp.push_back(post_fix->top());
+                post_fix->pop();
+            }
+        }
+
+        std::cout << "dump the postfix sign expression:" << std::endl;
+        for (auto sign = post_fix_exp.rbegin(); sign != post_fix_exp.rend(); sign++)
+        {
+#if 0
+            std::cout << "sign:" << (*sign)->getSign()
+                << ", type:" << (*sign)->getType()
+                << " ";
+#else
+            std::cout << (*sign)->getSign() << " ";
 #endif
-
-        vectorPtr<int> vec = std::make_shared<std::vector<int>>(std::initializer_list<int>({1, 2, 3, 4, 5}));
-        for (const auto it : *vec)
-            std::cout << it << std::endl;
+        }
+        std::cout << std::endl;
 
         return 0;
     }
-
-    {
-        BarPtr1 b1(new Bar<std::string>("123"));
-        b1->dump();
-
-        BarPtr<std::string> b2(new Bar<std::string>("12345"));
-        b2->dump();
-
-        return 0;
-    }
-
-    std::cout << "hello word" << std::endl;
-
-    Foo f1(1);
-    Bar<int> b1(2);
-    Bar<std::string> b2(std::string("3"));
-
-    f1.dump();
-    b1.dump();
-    b2.dump();
-
 
     return 0;
 }
