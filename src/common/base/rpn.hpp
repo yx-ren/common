@@ -363,7 +363,7 @@ SignExpressionStackPtr PRNParser<T>::infix2Postfix(const SignExpressionVector in
             }
 
             if (optr->getSign() == "(")
-                sign_exp->push(sign);
+                operators.push(optr);
             else if (optr->getSign() == ")")
             {
                 bool left_match = false;
@@ -377,14 +377,17 @@ SignExpressionStackPtr PRNParser<T>::infix2Postfix(const SignExpressionVector in
                     else
                     {
                         left_match = true; operators.pop();
+                        break;
                     }
                 }
 
+#if 1
                 if (!left_match)
                 {
                     std::cout << "'(' not match" << std::endl;
                     return nullptr;
                 }
+#endif
             }
             else
             {
@@ -399,10 +402,8 @@ SignExpressionStackPtr PRNParser<T>::infix2Postfix(const SignExpressionVector in
                             sign_exp->push(top_optr); operators.pop();
                     }
                 }
-            }
-
-            //if (optr->getSign() != "(" && optr->getSign() != ")")
                 operators.push(optr);
+            }
         }
     }
 
@@ -424,11 +425,6 @@ SignExpressionStackPtr PRNParser<T>::infix2Postfix(const SignExpressionVector in
     return sign_exp;
 }
 
-#if 0
-template<typename T>
-    using PRNParser = std::function<SignExpressionStack(const std::string& expression) >;
-#endif
-
 template<typename T>
 class RPNExpression
 {
@@ -449,27 +445,48 @@ private:
 template<typename T>
 OperandPtr<T> RPNExpression<T>::evaluate()
 {
-    SignExpressionStack op_signs = mParser.parse(mInfixExpression);
+    SignExpressionStackPtr op_signs_stack = mParser.parse(mInfixExpression);
+    SignExpressionVector op_signs_vector;
+    if (op_signs_stack)
+    {
+        while (!op_signs_stack->empty())
+        {
+            op_signs_vector.push_back(op_signs_stack->top());
+            op_signs_stack->pop();
+        }
+    }
+    std::reverse(op_signs_vector.begin(), op_signs_vector.end());
 
     std::stack<OperandPtr<T>> operands;
-    while (!op_signs.empty())
+    for (auto& sign : op_signs_vector)
     {
-        auto sign = op_signs.top(); op_signs.top();
         if (sign->getType() == OpSign::OPST_OPERAND)
         {
-            operands.push(sign);
+            auto oprd = std::dynamic_pointer_cast<Operand<T>>(sign);
+            if (!oprd)
+            {
+                std::cout << "OpSignPtr cast to Operand failed, sign:" << sign->getSign() << std::endl;
+                return nullptr;
+            }
+            operands.push(oprd);
         }
         else if (sign->getType() == OpSign::OPST_OPERATOR)
         {
             if (operands.size() < 2)
+            {
+                std::cout << "operands not match" << std::endl;
                 return nullptr;
+            }
 
             auto lhs_oprd = operands.top(); operands.pop();
             auto rhs_oprd = operands.top(); operands.pop();
 
             auto optr = std::dynamic_pointer_cast<BinOpterator<T>>(sign);
             if (!optr)
+            {
+                std::cout << "OpSignPtr cast to BinOpteratorPtr failed, sign:" << sign->getSign() << std::endl;
                 return nullptr;
+            }
 
             operands.push(optr->calculate(lhs_oprd, rhs_oprd));
         }

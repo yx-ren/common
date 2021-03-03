@@ -57,7 +57,8 @@ void test_rpn()
 
 int main(int argc, char* argv[])
 {
-    std::string exp = "( true  OR  false  ) AND  true  OR ( false  OR  false  )";
+    //std::string exp = "( true  OR  false  ) AND  true  OR  (true  OR  false AND  true OR true)  ";
+    std::string exp = "( true  OR  false  ) AND  true  OR  (true  OR  false AND  (true OR true))";
     std::cout << "origin infix exp:\n" << exp << std::endl;
 
     {
@@ -135,6 +136,15 @@ int main(int argc, char* argv[])
 #endif
         }
         std::cout << std::endl;
+
+        RPNExpression<bool> rpn_exp(exp);
+        rpn_exp.setParser(rpn_parser);
+
+        auto res = rpn_exp.evaluate();
+        if (res)
+        {
+            std::cout << res->toString() << std::endl;
+        }
 
         return 0;
     }
