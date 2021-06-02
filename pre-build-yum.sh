@@ -38,4 +38,5 @@ smart_install()
     fi
 }
 
-smart_install liblog4cxx10-dev
+smart_install log4cxx-devel
+smart_install boost-devel

@@ -45,8 +45,7 @@ if [ ${UNAME} ] ; then
     echo "build OS:[${UNAME}]"
 fi
 
-REDHAT_RELEASE=$(grep "Red Hat" /etc/redhat-release 2>/dev/null)
-if [ x"$REDHAT_RELEASE" != x"" ] ; then
+if [ -f "/etc/redhat-release" ] ; then
     LINUX_OS="RHEL"
 else
     LINUX_OS="Debian"
