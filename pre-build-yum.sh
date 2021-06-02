@@ -40,3 +40,7 @@ smart_install()
 
 smart_install log4cxx-devel
 smart_install boost-devel
+smart_install uuid
+smart_install uuid-devel
+smart_install libuuid
+smart_install libuuid-devel
